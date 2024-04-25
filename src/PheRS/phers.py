@@ -1,4 +1,6 @@
 import pandas as pd
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
 
 def get_phecode_occurrences(icd_occurrences, icd_phecode_map, dx_icd=None):
     """
@@ -60,11 +62,6 @@ def get_scores(weights, disease_phecode_map):
     scores.rename(columns={'w': 'score'}, inplace=True)
 
     return scores
-
-
-import pandas as pd
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
 
 
 def get_residual_scores(demos, scores, lm_formula):

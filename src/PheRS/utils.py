@@ -20,15 +20,19 @@ def check_demos(demos, method='prevalence'):
 
 
 def check_dx_icd(dx_icd, null_ok):
-    if not null_ok:
-        required_cols = ['disease_id', 'icd', 'flag']
-    else:
-        required_cols = ['icd', 'flag']
-
     if dx_icd is not None:
         assert isinstance(dx_icd, pd.DataFrame), "dx_icd must be a pandas DataFrame or None"
+        if not null_ok:
+            required_cols = ['disease_id', 'icd', 'flag']
+        else:
+            required_cols = ['icd', 'flag']
+
         assert all(col in dx_icd.columns for col in required_cols), f"Missing required columns: {required_cols}"
+        assert 'person_id' not in dx_icd.columns, "DataFrame should not contain 'person_id' column"
         assert pd.api.types.is_string_dtype(dx_icd['icd']), "icd column must contain strings"
+        assert dx_icd.columns.is_unique, "All column names must be unique"
+    elif not null_ok:
+        raise ValueError("dx_icd cannot be None unless null_ok is True")
 
 
 def check_icd_phecode_map(icd_phecode_map):

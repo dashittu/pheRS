@@ -1,0 +1,82 @@
+disease_id,disease_name,icd,flag,icd_name
+130000,Ehlers Danlos,756.83,9,Ehlers-Danlos syndrome
+130000,Ehlers Danlos,Q79.6,10,Ehlers-Danlos syndrome
+130000,Ehlers Danlos,Q79.60,10,"Ehlers-Danlos syndrome, unspecified"
+130000,Ehlers Danlos,Q79.61,10,Classical Ehlers-Danlos syndrome
+130000,Ehlers Danlos,Q79.69,10,Other Ehlers-Danlos syndromes
+131100,Multiple endocrine neoplasia [MEN] type I,258.01,9,Multiple endocrine neoplasia [MEN] type I
+131100,Multiple endocrine neoplasia [MEN] type I,E31.21,10,Multiple endocrine neoplasia [MEN] type I
+143100,Huntington's disease,333.4,9,Huntington's chorea
+143100,Huntington's disease,G10,10,Huntington's disease
+154700,Marfan's syndrome,759.82,9,Marfan syndrome
+154700,Marfan's syndrome,Q87.4,10,Marfan's syndrome
+154700,Marfan's syndrome,Q87.40,10,"Marfan's syndrome, unspecified"
+154700,Marfan's syndrome,Q87.41,10,Marfan's syndrome with cardiovascular manifestations
+154700,Marfan's syndrome,Q87.410,10,Marfan's syndrome with aortic dilation
+154700,Marfan's syndrome,Q87.418,10,Marfan's syndrome with other cardiovascular manifestations
+154700,Marfan's syndrome,Q87.42,10,Marfan's syndrome with ocular manifestations
+154700,Marfan's syndrome,Q87.43,10,Marfan's syndrome with skeletal manifestation
+162200,"Neurofibromatosis, type 1",237.71,9,"Neurofibromatosis, type 1 [von Recklinghausen's disease]"
+162200,"Neurofibromatosis, type 1",Q85.01,10,"Neurofibromatosis, type 1"
+162300,Multiple endocrine neoplasia [MEN] type IIB,258.03,9,Multiple endocrine neoplasia [MEN] type IIB
+162300,Multiple endocrine neoplasia [MEN] type IIB,E31.23,10,Multiple endocrine neoplasia [MEN] type IIB
+166200,Osteogenesis imperfecta,756.51,9,Osteogenesis imperfecta
+166200,Osteogenesis imperfecta,Q78.0,10,Osteogenesis imperfecta
+171400,Multiple endocrine neoplasia [MEN] type IIA,258.02,9,Multiple endocrine neoplasia [MEN] type IIA
+171400,Multiple endocrine neoplasia [MEN] type IIA,E31.22,10,Multiple endocrine neoplasia [MEN] type IIA
+187300,Hereditary hemorrhagic telangiectasia,448.0,9,Hereditary hemorrhagic telangiectasia
+187300,Hereditary hemorrhagic telangiectasia,I78.0,10,Hereditary hemorrhagic telangiectasia
+191100,Tuberous sclerosis,759.5,9,Tuberous sclerosis
+191100,Tuberous sclerosis,Q85.1,10,Tuberous sclerosis
+192500,Long QT syndrome,426.82,9,Long QT syndrome
+192500,Long QT syndrome,I45.81,10,Long QT syndrome
+212140,Primary carnitine deficiency,277.81,9,Primary carnitine deficiency
+212140,Primary carnitine deficiency,E71.41,10,Primary carnitine deficiency
+219700,Cystic fibrosis,277.0,9,Cystic fibrosis
+219700,Cystic fibrosis,277.00,9,Cystic fibrosis without mention of meconium ileus
+219700,Cystic fibrosis,277.01,9,Cystic fibrosis with meconium ileus
+219700,Cystic fibrosis,277.02,9,Cystic fibrosis with pulmonary manifestations
+219700,Cystic fibrosis,277.03,9,Cystic fibrosis with gastrointestinal manifestations
+219700,Cystic fibrosis,277.09,9,Cystic fibrosis with other manifestations
+219700,Cystic fibrosis,E84,10,Cystic fibrosis
+219700,Cystic fibrosis,E84.0,10,Cystic fibrosis with pulmonary manifestations
+219700,Cystic fibrosis,E84.1,10,Cystic fibrosis with intestinal manifestations
+219700,Cystic fibrosis,E84.11,10,Meconium ileus in cystic fibrosis
+219700,Cystic fibrosis,E84.19,10,Cystic fibrosis with other intestinal manifestations
+219700,Cystic fibrosis,E84.8,10,Cystic fibrosis with other manifestations
+219700,Cystic fibrosis,E84.9,10,"Cystic fibrosis, unspecified"
+225500,Chondroectodermal dysplasia,756.55,9,Chondroectoderm dysplas
+225500,Chondroectodermal dysplasia,Q77.6,10,Chondroectodermal dysplasia
+229600,Hereditary fructose intolerance,271.2,9,Hereditary fructose intolerance
+229600,Hereditary fructose intolerance,E74.12,10,Hereditary fructose intolerance
+235200,Hereditary hemochromatosis,275.01,9,Hereditary hemochromatosis
+235200,Hereditary hemochromatosis,E83.110,10,Hereditary hemochromatosis
+259700,Osteopetrosis,756.52,9,Osteopetrosis
+259700,Osteopetrosis,Q78.2,10,Osteopetrosis
+261600,Classical phenylketonuria,270.1,9,Phenylketonuria [PKU]
+261600,Classical phenylketonuria,E70.0,10,Classical phenylketonuria
+300624,Fragile X chromosome,759.83,9,Fragile X syndrome
+300624,Fragile X chromosome,Q99.2,10,Fragile X chromosome
+306700,Hemophilia A,286.0,9,Congenital factor VIII disorder
+306700,Hemophilia A,D66,10,Hereditary factor VIII deficiency
+306900,Hemophilia B,286.1,9,Congenital factor IX disorder
+306900,Hemophilia B,D67,10,Hereditary factor IX deficiency
+600072,Fatal familial insomnia,046.72,9,Fatal familial insomnia
+600072,Fatal familial insomnia,A81.83,10,Fatal familial insomnia
+601859,Autoimmune lymphoproliferative syndrome [ALPS],279.41,9,Autoimmune lymphoproliferative syndrome (ADDED)
+601859,Autoimmune lymphoproliferative syndrome [ALPS],D89.82,10,Autoimmune lymphoproliferative syndrome [ALPS]
+603903,Sickle cell anemia (Hb-SS),282.61,9,Hb-SS disease without crisis
+603903,Sickle cell anemia (Hb-SS),282.62,9,Hb-SS disease with mention of crisis
+603903,Sickle cell anemia (Hb-SS),D57.0,10,Hb-SS disease with crisis
+603903,Sickle cell anemia (Hb-SS),D57.00,10,"Hb-SS disease with crisis, unspecified"
+603903,Sickle cell anemia (Hb-SS),D57.01,10,Hb-SS disease with acute chest syndrome
+603903,Sickle cell anemia (Hb-SS),D57.02,10,Hb-SS disease with splenic sequestration
+603903,Sickle cell anemia (Hb-SS),D57.03,10,Hb-SS disease with cerebral vascular involvement
+603903,Sickle cell anemia (Hb-SS),D57.09,10,Hb-SS disease with crisis with other specified complication
+603903,Sickle cell anemia (Hb-SS),D57.1,10,Sickle-cell disease without crisis
+607364,Bartter syndrome,255.13,9,Bartter's syndrome
+607364,Bartter syndrome,E26.81,10,Bartter's syndrome
+611804,Hereditary elliptocytosis,282.1,9,Hereditary elliptocytosis
+611804,Hereditary elliptocytosis,D58.1,10,Hereditary elliptocytosis
+613490,Alpha-1-antitrypsin deficiency,273.4,9,Alpha-1-antitrypsin deficiency
+613490,Alpha-1-antitrypsin deficiency,E88.01,10,Alpha-1-antitrypsin deficiency

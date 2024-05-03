@@ -1,4 +1,3 @@
-
 def all_icd_query(ds):
     """
     This method is optimized for All of Us platform. The code is coming from Tam's PheTK package with a few
@@ -31,7 +30,7 @@ def all_icd_query(ds):
             ON
                 co.condition_source_value = c.concept_code
             WHERE
-                c.vocabulary_id in ("ICD9CM", "ICD10CM")
+                c.vocabulary_id in ("ICD9", "ICD9CM", "ICD10", "ICD10CM")
         )
         UNION DISTINCT
         (
@@ -140,12 +139,13 @@ def all_icd_query(ds):
 
     return final_query
 
+
 def all_demo_query(ds):
     """
     This method is optimized for the All of Us platform. This query generates a table containing participant IDs and
     their ICD codes from unique dates
-    :param ds:
-    :return:
+    :param ds: Google BigQuery dataset ID containing OMOP data tables
+    :return: a SQL query that would generate a table contains participant IDs and their demographic characteristics
     """
 
     demo_query: str = f"""
@@ -171,9 +171,9 @@ def all_demo_query(ds):
                         JOIN 
                             {ds}.person p ON p.person_id = e.person_id
                         JOIN 
-                            {ds}.concept c ON c.concept_ID = e.source_concept_ID
+                            {ds}.concept co ON co.concept_id = e.condition_source_concept_id
                         WHERE 
-                            c.vocabulary_id IN ('ICD9CM', 'ICD10CM')
+                            co.vocabulary_id IN ('ICD9CM', 'ICD10CM')
                         GROUP BY 
                             p.person_id, e.condition_start_date
                     ) AS icds
@@ -184,10 +184,14 @@ def all_demo_query(ds):
             (
                 SELECT 
                     person_id, 
-                    sex_at_birth, 
+                    c1.concept_name AS sex, 
                     DATE(birth_datetime) AS dob 
                 FROM 
-                    {ds}.person
+                    {ds}.person p1
+                JOIN 
+                    {ds}.concept c1 ON c1.concept_id = p1.sex_at_birth_concept_id
             ) AS demos ON ages.person_id = demos.person_id;
        
         """
+
+    return demo_query

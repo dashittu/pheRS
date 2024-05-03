@@ -1,6 +1,103 @@
 from patsy.desc import ModelDesc
+from google.cloud import bigquery
+import os
+import polars as pl
+# import pyarrow as pa
+import sys
 import pandas as pd
 import numpy as np
+
+
+def to_polars(df):
+    """
+    Check and convert pandas dataframe object to polars dataframe, if applicable
+    :param df: dataframe object
+    :return: polars dataframe
+    """
+    if not isinstance(df, pl.DataFrame):
+        return pl.from_pandas(df)
+    else:
+        return df
+
+
+def polars_gbq(query):
+    """
+    Take a SQL query and return result as polars dataframe
+    :param query: BigQuery SQL query
+    :return: polars dataframe
+    """
+    client = bigquery.Client()
+    query_job = client.query(query)
+    rows = query_job.result()
+    df = pl.from_arrow(rows.to_arrow())
+
+    return df
+
+
+def get_phecode_mapping(phecode_version, icd_version, phecode_map_file_path, keep_all_columns=True):
+    """
+    Load phecode mapping table
+    :param phecode_version: defaults to "X"; other option is "1.2"
+    :param icd_version: defaults to "US"; other option is "custom";
+                        if "custom", user need to provide phecode_map_path
+    :param phecode_map_file_path: path to custom phecode map table
+    :param keep_all_columns: defaults to True
+    :return: phecode mapping table as polars dataframe
+    """
+    # load phecode mapping file by version or by custom path
+    phemap_dir = os.path.dirname(__file__)
+    final_file_path = os.path.join(phemap_dir, "data_raw")
+    path_suffix = ""
+    if phecode_version == "X":
+        if icd_version == "US":
+            path_suffix = "phecodeX.csv"
+        elif icd_version == "custom":
+            if phecode_map_file_path is None:
+                print("Please provide phecode_map_path for custom icd_version")
+                sys.exit(0)
+        else:
+            print("Invalid icd_version. Available icd_version values are US, WHO and custom.")
+            sys.exit(0)
+        if phecode_map_file_path is None:
+            final_file_path = os.path.join(final_file_path, path_suffix)
+        else:
+            final_file_path = phecode_map_file_path
+        # noinspection PyTypeChecker
+        phecode_df = pl.read_csv(final_file_path,
+                                 dtypes={"phecode": str,
+                                         "ICD": str,
+                                         "flag": pl.Int8,
+                                         "code_val": float})
+        if not keep_all_columns:
+            phecode_df = phecode_df[["phecode", "ICD", "flag"]]
+    elif phecode_version == "1.2":
+        if icd_version == "US":
+            path_suffix = "phecode12.csv"
+        elif icd_version == "custom":
+            if phecode_map_file_path is None:
+                print("Please provide phecode_map_path for custom icd_version")
+                sys.exit(0)
+        else:
+            print("Invalid icd_version. Available icd_version values are US and custom.")
+            sys.exit(0)
+        if phecode_map_file_path is None:
+            final_file_path = os.path.join(final_file_path, path_suffix)
+        else:
+            final_file_path = phecode_map_file_path
+        # noinspection PyTypeChecker
+        phecode_df = pl.read_csv(final_file_path,
+                                 dtypes={"phecode": str,
+                                         "ICD": str,
+                                         "flag": pl.Int8,
+                                         "exclude_range": str,
+                                         "phecode_unrolled": str})
+        if not keep_all_columns:
+            phecode_df = phecode_df[["phecode_unrolled", "ICD", "flag"]]
+    else:
+        print("Unsupported phecode version. Supports phecode \"1.2\" and \"X\".")
+        sys.exit(0)
+
+    return phecode_df
 
 
 def check_demos(demos, method='prevalence'):
@@ -26,7 +123,7 @@ def check_demos(demos, method='prevalence'):
 
 def check_dx_icd(dx_icd, null_ok):
     if dx_icd is not None:
-        assert isinstance(dx_icd, pd.DataFrame), "dx_icd must be a pandas DataFrame or None"
+        assert isinstance(dx_icd, pl.DataFrame), "dx_icd must be a Polars DataFrame or None"
         if not null_ok:
             required_cols = ['disease_id', 'icd', 'flag']
         else:
@@ -34,8 +131,8 @@ def check_dx_icd(dx_icd, null_ok):
 
         assert all(col in dx_icd.columns for col in required_cols), f"Missing required columns: {required_cols}"
         assert 'person_id' not in dx_icd.columns, "DataFrame should not contain 'person_id' column"
-        assert pd.api.types.is_string_dtype(dx_icd['icd']), "icd column must contain strings"
-        assert dx_icd.columns.is_unique, "All column names must be unique"
+        assert dx_icd.schema['icd'].dtype == pl.Utf8, "icd column must contain strings"
+        assert len(dx_icd.columns) == len(set(dx_icd.columns)), "All column names must be unique"
     elif not null_ok:
         raise ValueError("dx_icd cannot be None unless null_ok is True")
 
@@ -52,12 +149,12 @@ def check_icd_phecode_map(icd_phecode_map):
     - Columns 'icd' and 'phecode' should contain strings.
     - The DataFrame should have no duplicate rows.
     """
-    # Check if icd_phecode_map is a pandas DataFrame
-    if not isinstance(icd_phecode_map, pd.DataFrame):
-        raise ValueError("icd_phecode_map must be a pandas DataFrame")
+    # Check if icd_phecode_map is a polars DataFrame
+    if not isinstance(icd_phecode_map, pl.DataFrame):
+        raise ValueError("icd_phecode_map must be a Polars DataFrame")
 
     # Required columns
-    required_columns = ['phecode', 'icd', 'flag']
+    required_columns = ['phecode', 'ICD', 'flag']
 
     # Check for required columns
     missing_cols = [col for col in required_columns if col not in icd_phecode_map.columns]
@@ -65,17 +162,17 @@ def check_icd_phecode_map(icd_phecode_map):
         raise ValueError(f"Missing required columns: {missing_cols}")
 
     # Check for unique column names
-    if not icd_phecode_map.columns.is_unique:
+    if len(icd_phecode_map.columns) != len(set(icd_phecode_map.columns)):
         raise ValueError("Column names in icd_phecode_map must be unique")
 
     # Check data type of 'icd' and 'phecode' columns
-    if not pd.api.types.is_string_dtype(icd_phecode_map['icd']):
-        raise ValueError("Column 'icd' must contain strings")
-    if not pd.api.types.is_string_dtype(icd_phecode_map['phecode']):
+    if not icd_phecode_map.schema['ICD'].dtype == pl.Utf8:
+        raise ValueError("Column 'ICD' must contain strings")
+    if not icd_phecode_map.schema['phecode'].dtype == pl.Utf8:
         raise ValueError("Column 'phecode' must contain strings")
 
     # Check for duplicates
-    if icd_phecode_map.duplicated().any():
+    if icd_phecode_map.duplicated(subset=None, keep='first').sum() > 0:
         raise ValueError("icd_phecode_map contains duplicate rows")
 
 
@@ -93,10 +190,10 @@ def check_icd_occurrences(icd_occurrences, cols=None):
     - The 'icd' column must contain strings.
     - The DataFrame should have no duplicate rows.
     """
-    # Check if icd_occurrences is a pandas DataFrame
+    # Check if icd_occurrences is a polars DataFrame
     if cols is None:
-        cols = ['person_id', 'icd', 'flag']
-    if not isinstance(icd_occurrences, pd.DataFrame):
+        cols = ['person_id', 'ICD', 'flag']
+    if not isinstance(icd_occurrences, pl.DataFrame):
         raise ValueError("icd_occurrences must be a pandas DataFrame")
 
     # Check for required columns
@@ -105,7 +202,7 @@ def check_icd_occurrences(icd_occurrences, cols=None):
         raise ValueError(f"Missing required columns: {missing_cols}")
 
     # Check for unique column names
-    if not icd_occurrences.columns.is_unique:
+    if len(icd_occurrences.columns.columns) != len(set(icd_occurrences.columns.columns)):
         raise ValueError("Column names in icd_occurrences must be unique")
 
     # Check for disallowed columns
@@ -115,11 +212,11 @@ def check_icd_occurrences(icd_occurrences, cols=None):
         raise ValueError(f"icd_occurrences should not include columns: {included_disallowed_cols}")
 
     # Check data type of 'icd' column
-    if not pd.api.types.is_string_dtype(icd_occurrences['icd']):
+    if icd_occurrences.schema['phecode'] != pl.Utf8:
         raise ValueError("Column 'icd' must contain strings")
 
     # Check for duplicate rows
-    if icd_occurrences.duplicated().any():
+    if icd_occurrences.duplicated(subset=['disease_id', 'phecode']).sum() > 0:
         raise ValueError("icd_occurrences contains duplicate rows")
 
 
@@ -237,8 +334,8 @@ def check_disease_phecode_map(disease_phecode_map):
     - ValueError: If any validation check fails.
     """
     # Ensure disease_phecode_map is a DataFrame
-    if not isinstance(disease_phecode_map, pd.DataFrame):
-        raise ValueError("disease_phecode_map must be a pandas DataFrame")
+    if not isinstance(disease_phecode_map, pl.DataFrame):
+        raise ValueError("disease_phecode_map must be a Polars DataFrame")
 
     # Check for required columns
     required_columns = ['disease_id', 'phecode']
@@ -246,22 +343,22 @@ def check_disease_phecode_map(disease_phecode_map):
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
 
-    # Ensure column names are unique
-    if not disease_phecode_map.columns.is_unique:
+    # Check for unique column names
+    if len(disease_phecode_map.columns) != len(set(disease_phecode_map.columns)):
         raise ValueError("Column names in disease_phecode_map must be unique")
 
     # Exclude disallowed columns
     disallowed_cols = {'id', 'person_id', 'w'}  # Use a set for efficient lookup
-    included_disallowed_cols = disallowed_cols.intersection(disease_phecode_map.columns)
+    included_disallowed_cols = disallowed_cols.intersection(set(disease_phecode_map.columns))
     if included_disallowed_cols:
         raise ValueError(f"Columns {included_disallowed_cols} should not be included in disease_phecode_map")
 
     # Validate 'phecode' column is character type
-    if not pd.api.types.is_string_dtype(disease_phecode_map['phecode']):
+    if disease_phecode_map.schema['phecode'] != pl.Utf8:
         raise ValueError("Column 'phecode' must contain strings")
 
-    # Check for duplicates based on 'disease_id' and 'phecode'
-    if disease_phecode_map.duplicated(subset=['disease_id', 'phecode']).any():
+        # Check for duplicates based on 'disease_id' and 'phecode'
+    if disease_phecode_map.duplicated(subset=['disease_id', 'phecode']).sum() > 0:
         raise ValueError("Duplicates found based on 'disease_id' and 'phecode'")
 
 
@@ -537,3 +634,28 @@ def check_method_formula(method_formula, demos):
         raise ValueError("The formula contains a dependent variable, which is not allowed.")
 
     print("Formula is correctly specified with appropriate variables and no dependent variable.")
+
+
+def report_result(result, phecode_version, placeholder, output_file_name):
+    if not result.is_empty():
+        if output_file_name is None:
+            if phecode_version is not None:
+                file_name = "{0}_{1}_phecode{2}_counts.csv".format(self.platform, icd_version,
+                                                                   phecode_version.upper().replace(".", ""))
+            else:
+                file_name = f"{placeholder}.csv"
+        else:
+            file_name = output_file_name
+        result.write_csv(file_name)
+        if phecode_version is not None:
+            print(f"\033[1mSuccessfully generated phecode {phecode_version} occurrences for cohort participants!\n"
+                  f"\033[1mSaved to {file_name}!\033[0m")
+            print()
+        else:
+            print(f"\033[1mSuccessfully generated {placeholder} for cohort participants!\n"
+                  f"\033[1mSaved to {file_name}!\033[0m")
+            print()
+
+    else:
+        print("\033[1mNo phecode occurrences generated. Check your input data.\033[0m")
+        print()

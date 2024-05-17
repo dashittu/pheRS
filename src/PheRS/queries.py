@@ -154,7 +154,10 @@ def all_demo_query(ds):
             demos.sex, 
             demos.dob, 
             ages.first_date, 
-            ages.last_date
+            ages.last_date,
+            (DATEDIFF(day, demos.dob, ages.first_date) / 365.25) AS first_age,
+            (DATEDIFF(day, demos.dob, ages.last_date) / 365.25) AS last_age
+        FROM 
         FROM 
             (
                 SELECT 

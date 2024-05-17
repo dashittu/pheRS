@@ -74,7 +74,7 @@ def map_disease_to_phecode(data_version, disease_hpo_map_file, hpo_phecode_map_f
     disease_phecode_map = disease_phecode_map.sort(by=['disease_id', 'phecode'])
 
     # report result
-    utils.report_result(disease_phecode_map, phecode_version=None, placeholder="disease_phecode_map",
+    utils.report_result(disease_phecode_map, placeholder="disease_phecode_map",
                         output_file_name=output_file_name)
 
 

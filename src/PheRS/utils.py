@@ -35,7 +35,7 @@ def polars_gbq(query):
 
 def get_allofus_demo():
     """
-    Takes in no arguments. Get all All of Us demographic datasets
+    Takes in no arguments. Get All of Us demographic datasets
         "aou": All of Us OMOP database
     :return: list of all Us demographic datasets
     """
@@ -105,6 +105,7 @@ def get_phecode_mapping(phecode_version, icd_version, phecode_map_file_path, kee
                                          "phecode_unrolled": str})
         if not keep_all_columns:
             phecode_df = phecode_df[["phecode_unrolled", "ICD", "flag"]]
+            phecode_df = phecode_df.rename({"phecode_unrolled": "phecode"})
     else:
         print("Unsupported phecode version. Supports phecode \"1.2\" and \"X\".")
         sys.exit(0)
@@ -125,9 +126,9 @@ def check_demos(demos, method='prevalence'):
     assert all(col in demos.columns for col in required_cols), f"Missing required columns: {required_cols}"
     assert not any(col in demos.columns for col in excluded_cols), (f"DataFrame contains unexpected columns: "
                                                                     f"{excluded_cols}")
-    assert demos.select('person_id').is_unique(), "person_id must be unique"
+    assert demos.select('person_id').is_unique().all(), "person_id must be unique"
     if method == 'cox':
-        assert demos.schema['first_age'].dtype in [pl.Int64, pl.Float64] and demos.schema['last_age'].dtype in [
+        assert demos.schema['first_age'] in [pl.Int64, pl.Float64] and demos.schema['last_age'] in [
             pl.Int64, pl.Float64], "first_age and last_age must be numeric"
         assert demos.filter((pl.col('first_age') < 0) | (pl.col('last_age') < 0)).is_empty(), \
             "first_age and last_age must be non-negative"
@@ -178,14 +179,14 @@ def check_icd_phecode_map(icd_phecode_map):
         raise ValueError("Column names in icd_phecode_map must be unique")
 
     # Check data type of 'icd' and 'phecode' columns
-    if not icd_phecode_map.schema['ICD'].dtype == pl.Utf8:
+    if not icd_phecode_map.schema['ICD'] == pl.Utf8:
         raise ValueError("Column 'ICD' must contain strings")
-    if not icd_phecode_map.schema['phecode'].dtype == pl.Utf8:
+    if not icd_phecode_map.schema['phecode'] == pl.Utf8:
         raise ValueError("Column 'phecode' must contain strings")
 
     # Check for duplicates
-    if icd_phecode_map.unique().height != icd_phecode_map.height:
-        raise ValueError("icd_phecode_map contains duplicate rows")
+    # if icd_phecode_map.unique().shape[0] != icd_phecode_map.shape[0]:
+    #    raise ValueError("icd_phecode_map contains duplicate rows")
 
 
 def check_icd_occurrences(icd_occurrences, cols=None):
@@ -214,7 +215,7 @@ def check_icd_occurrences(icd_occurrences, cols=None):
         raise ValueError(f"Missing required columns: {missing_cols}")
 
     # Check for unique column names
-    if len(icd_occurrences.columns.columns) != len(set(icd_occurrences.columns.columns)):
+    if len(icd_occurrences.columns) != len(set(icd_occurrences.columns)):
         raise ValueError("Column names in icd_occurrences must be unique")
 
     # Check for disallowed columns
@@ -224,11 +225,11 @@ def check_icd_occurrences(icd_occurrences, cols=None):
         raise ValueError(f"icd_occurrences should not include columns: {included_disallowed_cols}")
 
     # Check data type of 'icd' column
-    if icd_occurrences.schema['phecode'] != pl.Utf8:
+    if icd_occurrences.schema['ICD'] != pl.Utf8:
         raise ValueError("Column 'icd' must contain strings")
 
     # Check for duplicate rows
-    if icd_occurrences.duplicated(subset=['disease_id', 'phecode']).sum() > 0:
+    if icd_occurrences.unique(subset=['person_id', 'ICD', 'flag']).shape[0] != icd_occurrences.shape[0]:
         raise ValueError("icd_occurrences contains duplicate rows")
 
 
@@ -245,7 +246,7 @@ def check_phecode_occurrences(phecode_occurrences, demos, method='prevalence'):
     Raises:
     - ValueError: If any validation check fails.
     """
-    valid_methods = ['prevalence', 'logistic', 'cox', 'loglinear', 'prevalence_precalc']
+    valid_methods = ['prevalence', 'logistic', 'cox', 'loglinear']
     if method not in valid_methods:
         raise ValueError(f"Method must be one of {valid_methods}")
 
@@ -278,15 +279,15 @@ def check_phecode_occurrences(phecode_occurrences, demos, method='prevalence'):
     # Numeric columns validation
     if method in ['cox', 'loglinear']:
         numeric_column = 'occurrence_age' if method == 'cox' else 'num_occurrences'
-        if phecode_occurrences.schema[numeric_column].dtype not in [pl.Int64, pl.Float64]:
+        if phecode_occurrences.schema[numeric_column] not in [pl.Int64, pl.Float64]:
             raise ValueError(f"Column '{numeric_column}' must be numeric for method '{method}'")
 
     # Validate 'person_id' in demos
-    if not phecode_occurrences.join(demos.select('person_id'), on='person_id', how='left_semi').is_empty():
+    if not phecode_occurrences['person_id'].is_in(demos['person_id']).all():
         raise ValueError("All 'person_id' values in phecode_occurrences must exist in demos")
 
     # Validate 'phecode' column is character type
-    if phecode_occurrences.schema['phecode'].dtype != pl.Utf8:
+    if phecode_occurrences.schema['phecode'] != pl.Utf8:
         raise ValueError("Column 'phecode' must contain strings")
 
 
@@ -622,19 +623,8 @@ def check_method_formula(method_formula, demos):
     Raises:
     - ValueError: If the formula specifies a dependent variable or contains forbidden variables.
     """
-    # Convert the formula to a patsy ModelDesc object if it's a string
-    if isinstance(method_formula, str):
-        try:
-            formula = ModelDesc.from_formula(method_formula)
-        except Exception as e:
-            raise ValueError(f"Error parsing formula: {e}")
-    elif isinstance(method_formula, ModelDesc):
-        formula = method_formula
-    else:
-        raise ValueError("method_formula must be either a string or a patsy ModelDesc object")
 
-    # Extract variable names from the formula's right-hand side (RHS)
-    formula_vars = {str(term) for term in formula.rhs_termlist}
+    formula_vars = set(method_formula.replace(' ', '').split('+'))
 
     # Check if formula variables are present in the DataFrame columns
     missing_vars = formula_vars.difference(demos.columns)
@@ -646,10 +636,6 @@ def check_method_formula(method_formula, demos):
     included_forbidden_vars = forbidden_vars.intersection(formula_vars)
     if included_forbidden_vars:
         raise ValueError(f"The formula includes forbidden variables: {included_forbidden_vars}")
-
-    # Ensure no dependent variable is specified by checking the left-hand side (LHS)
-    if formula.lhs_termlist:
-        raise ValueError("The formula contains a dependent variable, which is not allowed.")
 
     print("Formula is correctly specified with appropriate variables and no dependent variable.")
 

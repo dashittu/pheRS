@@ -1,7 +1,7 @@
 import os
 import polars as pl
 import sys
-
+# noinspection PyUnresolvedReferences,PyProtectedMember
 from src.PheRS import utils
 
 
@@ -16,7 +16,7 @@ def map_disease_to_phecode(data_version, disease_hpo_map_file, hpo_phecode_map_f
       Must have columns 'hpo_term_id' and 'phecode'.
 
     Returns:
-    - A pandas.DataFrame with unique mappings from 'disease_id' to 'phecode'.
+    - A polars.DataFrame with unique mappings from 'disease_id' to 'phecode'.
     """
 
     # load phecode mapping file by None keyword or custom path

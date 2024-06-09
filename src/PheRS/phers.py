@@ -59,7 +59,7 @@ def get_residual_scores(platform='aou', demos_path=None, scores_path=None, lm_fo
     Calculates residual scores for diseases by adjusting for demographics using a linear model.
 
     Parameters:
-    - demos: polars.DataFrame containing demographic data for each person. Must have a column 'person_id'.
+    - demo: polars.DataFrame containing demographic data for each person. Must have a column 'person_id'.
     - scores: polars.DataFrame containing disease scores for each person. Must have columns 'person_id',
         'disease_id', and 'score'.
     - lm_formula: string representing the formula for the linear model, e.g., 'score ~ age + sex'.

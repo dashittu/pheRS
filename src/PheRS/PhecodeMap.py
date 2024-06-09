@@ -7,7 +7,7 @@ from PheRS import queries, utils
 
 class PhecodeMap:
     """
-        Class phers implements three different functions
+        Class PhecodeMap implements one function
          - get_phecode_occurrences that maps icd_occurrences with the icd_phecode_map
         Currently, supports ICD code extraction for All of Us OMOP data.
         For other databases, user is expected to provide an ICD code table for all participants in cohort of interest.
@@ -61,32 +61,33 @@ class PhecodeMap:
 
         print("\033[1mDone!")
 
-    def get_phecode_occurrences(self, icd_phecode_map_path=None, dx_icd=None,
-                                phecode_version="X", icd_version="US", output_file_name=None):
+    def get_phecode_occurrences(self, phecode_map_file_path=None, dx_icd=None,
+                                phecode_version="X", icd_version="US", include_occurrence_age=False,
+                                output_file_name=None):
         """
         Maps ICD occurrences to phecodes by merging ICD occurrence data with a mapping table.
 
         Parameters:
-        - icd_occurrences: pandas.DataFrame containing ICD code occurrences for each person in the cohort.
+        - icd_occurrences: polars.DataFrame containing ICD code occurrences for each person in the cohort.
             Must have columns 'icd', 'flag', and 'person_id'.
-        - icd_phecode_map_path: pandas.DataFrame containing the mapping from ICD codes to phecodes.
+        - icd_phecode_map_path: polars.DataFrame containing the mapping from ICD codes to phecodes.
             Must have columns 'icd', 'flag', and 'phecode'.
-        - dx_icd: Optional. pandas.DataFrame containing ICD codes to be removed. Must have columns 'icd' and 'flag'.
+        - dx_icd: Optional. polars.DataFrame containing ICD codes to be removed. Must have columns 'icd' and 'flag'.
             If None, no ICD codes are removed.
         - phecode_version: Version of phecode to be merged. Either X or 1.2
         - icd_version: Version of ICD code to be merged. Either US, WHO or custom
 
         Returns:
-        - A pandas.DataFrame with columns 'person_id' and 'phecode', representing the occurrence of phecodes per person.
+        - A polars.DataFrame with columns 'person_id' and 'phecode', representing the occurrence of phecodes per person.
         """
 
         # load phecode mapping file by version or by custom path
         # noinspection PyGlobalUndefined
-        global icd_occurrences
+        # global icd_occurrences
         icd_phecode_map = utils.get_phecode_mapping(
             phecode_version=phecode_version,
             icd_version=icd_version,
-            icd_phecode_map_path=icd_phecode_map_path,
+            phecode_map_file_path=phecode_map_file_path,
             keep_all_columns=False
         )
 
@@ -94,7 +95,10 @@ class PhecodeMap:
         icd_events = self.icd_events.clone()
 
         # Required columns
-        icd_events = icd_events[["person_id", "ICD", "flag"]]
+        if include_occurrence_age:
+            icd_events = icd_events[["person_id", "ICD", "flag", "occurrence_age"]]
+        else:
+            icd_events = icd_events[["person_id", "ICD", "flag"]]
 
         print()
         print(f"\033[1mMapping ICD codes to phecode {phecode_version}...")
@@ -112,21 +116,36 @@ class PhecodeMap:
             icd_events = icd_occurrences.filter(pl.col("merge_indicator").is_null()).drop("merge_indicator")
 
         # Merge icd occurrences with icd phecode map
-        if phecode_version == "X":
-            phecode_occurrences = icd_events.join(icd_phecode_map[['ICD', 'flag', 'phecode']], on=['ICD', 'flag'],
+        if phecode_version in ["X", "1.2"]:
+            phecode_occurrences = icd_events.join(icd_phecode_map, on=['ICD', 'flag'],
                                                   how='inner')
-        elif phecode_version == "1.2":
-            phecode_occurrences = icd_events.join(icd_phecode_map[['ICD', 'flag', 'phecode']], on=['ICD', 'flag'],
-                                                  how='inner')
-            phecode_occurrences = phecode_occurrences.rename({"phecode_unrolled": "phecode"})
         else:
             phecode_occurrences = pl.DataFrame()
-        phecode_occurrences = phecode_occurrences.select(['person_id', 'phecode']).unique()
+
+        if include_occurrence_age:
+            phecode_occurrences = phecode_occurrences.select(['person_id', 'phecode', 'occurrence_age']).unique()
+        else:
+            phecode_occurrences = phecode_occurrences.select(['person_id', 'phecode']).unique()
 
         if not phecode_occurrences.is_empty():
-            phecode_occurrences = phecode_occurrences.group_by(["person_id", "phecode"]).len().rename(
-                {"len": "num_occurrences"})
+            if include_occurrence_age:
+                phecode_occurrences = phecode_occurrences.group_by(
+                    ["person_id", "phecode", "occurrence_age"]).len().rename(
+                    {"len": "num_occurrences"})
+            else:
+                phecode_occurrences = phecode_occurrences.group_by(["person_id", "phecode"]).len().rename(
+                    {"len": "num_occurrences"})
 
         # report result
         utils.report_result(phecode_occurrences, placeholder='phecode_occurrences',
                             output_file_name=output_file_name)
+
+
+# if __name__ == "__main__":
+#    phecode = PhecodeMap(platform='custom', icd_df_path='/Users/dayoshittu/Downloads/icd_data_sample.csv')
+#    phecode.get_phecode_occurrences(phecode_map_file_path=None,
+#                                    dx_icd=None,
+#                                    phecode_version="1.2",
+#                                    icd_version="US",
+#                                    include_occurrence_age=True,
+#                                    output_file_name=None)

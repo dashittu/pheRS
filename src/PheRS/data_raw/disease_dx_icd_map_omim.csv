@@ -1,4 +1,4 @@
-disease_id,disease_name,icd,flag,icd_name
+disease_id,disease_name,ICD,flag,icd_name
 130000,Ehlers Danlos,756.83,9,Ehlers-Danlos syndrome
 130000,Ehlers Danlos,Q79.6,10,Ehlers-Danlos syndrome
 130000,Ehlers Danlos,Q79.60,10,"Ehlers-Danlos syndrome, unspecified"

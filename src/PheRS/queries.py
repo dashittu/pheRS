@@ -22,15 +22,21 @@ def all_icd_query(ds):
                 co.condition_start_date AS date,
                 c.vocabulary_id AS flag,
                 c.concept_code AS ICD,
-                co.condition_concept_id AS concept_id
+                co.condition_concept_id AS concept_id,
+                DATE(p.birth_datetime) AS dob,
+                DATE_DIFF(co.condition_start_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
             FROM
                 {ds}.condition_occurrence AS co
             INNER JOIN
                 {ds}.concept AS c
             ON
                 co.condition_source_value = c.concept_code
+            INNER JOIN
+                {ds}.person AS p
+            ON
+                co.person_id = p.person_id
             WHERE
-                c.vocabulary_id in ("ICD9", "ICD9CM", "ICD10", "ICD10CM")
+                c.vocabulary_id IN ('ICD9', 'ICD9CM', 'ICD10', 'ICD10CM')
         )
         UNION DISTINCT
         (
@@ -39,15 +45,21 @@ def all_icd_query(ds):
                 co.condition_start_date AS date,
                 c.vocabulary_id AS flag,
                 c.concept_code AS ICD,
-                co.condition_concept_id AS concept_id
+                co.condition_concept_id AS concept_id,
+                DATE(p.birth_datetime) AS dob,
+                DATE_DIFF(co.condition_start_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
             FROM
                 {ds}.condition_occurrence AS co
             INNER JOIN
                 {ds}.concept AS c
             ON
                 co.condition_source_concept_id = c.concept_id
+            INNER JOIN
+                {ds}.person AS p
+            ON
+                co.person_id = p.person_id
             WHERE
-                c.vocabulary_id in ("ICD9CM", "ICD10CM")
+                c.vocabulary_id IN ('ICD9CM', 'ICD10CM')
         )
         UNION DISTINCT
         (
@@ -56,15 +68,21 @@ def all_icd_query(ds):
                 o.observation_date AS date,
                 c.vocabulary_id AS flag,
                 c.concept_code AS ICD,
-                o.observation_concept_id AS concept_id
+                o.observation_concept_id AS concept_id,
+                DATE(p.birth_datetime) AS dob,
+                DATE_DIFF(o.observation_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
             FROM
                 {ds}.observation AS o
             INNER JOIN
-                {ds}.concept as c
+                {ds}.concept AS c
             ON
                 o.observation_source_value = c.concept_code
+            INNER JOIN
+                {ds}.person AS p
+            ON
+                o.person_id = p.person_id
             WHERE
-                c.vocabulary_id in ("ICD9CM", "ICD10CM")
+                c.vocabulary_id IN ('ICD9CM', 'ICD10CM')
         )
         UNION DISTINCT
         (
@@ -73,70 +91,77 @@ def all_icd_query(ds):
                 o.observation_date AS date,
                 c.vocabulary_id AS flag,
                 c.concept_code AS ICD,
-                o.observation_concept_id AS concept_id
+                o.observation_concept_id AS concept_id,
+                DATE(p.birth_datetime) AS dob,
+                DATE_DIFF(o.observation_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
             FROM
                 {ds}.observation AS o
             INNER JOIN
-                {ds}.concept as c
+                {ds}.concept AS c
             ON
                 o.observation_source_concept_id = c.concept_id
+            INNER JOIN
+                {ds}.person AS p
+            ON
+                o.person_id = p.person_id
             WHERE
-                c.vocabulary_id in ("ICD9CM", "ICD10CM")
+                c.vocabulary_id IN ('ICD9CM', 'ICD10CM')
         )
-    """
+        """
 
     v_icd_vocab_query: str = f"""
-        SELECT DISTINCT
-            v_icds.person_id,
-            v_icds.date,
-            v_icds.ICD,
-            c.vocabulary_id AS flag
-        FROM
-            (
-                SELECT
-                    *
-                FROM
-                    ({icd_query}) AS icd_events
-                WHERE
-                    icd_events.ICD LIKE "V%"
-            ) AS v_icds
-        INNER JOIN
-            {ds}.concept_relationship AS cr
-        ON
-            v_icds.concept_id = cr.concept_id_1
-        INNER JOIN
-            {ds}. concept AS c
-        ON
-            cr.concept_id_2 = c.concept_id
-        WHERE
-            c.vocabulary_id IN ("ICD9CM", "ICD10CM")
-        AND
-            v_icds.ICD = c.concept_code
-        AND NOT
-            v_icds.vocabulary_id != c.vocabulary_id
-    """
+            SELECT DISTINCT
+                v_icds.person_id,
+                v_icds.date,
+                v_icds.ICD,
+                c.vocabulary_id AS flag,
+                v_icds.occurrence_age
+            FROM
+                (
+                    SELECT
+                        *
+                    FROM
+                        ({icd_query}) AS icd_events
+                    WHERE
+                        icd_events.ICD LIKE "V%"
+                ) AS v_icds
+            INNER JOIN
+                {ds}.concept_relationship AS cr
+            ON
+                v_icds.concept_id = cr.concept_id_1
+            INNER JOIN
+                {ds}. concept AS c
+            ON
+                cr.concept_id_2 = c.concept_id
+            WHERE
+                c.vocabulary_id IN ("ICD9CM", "ICD10CM")
+            AND
+                v_icds.ICD = c.concept_code
+            AND NOT
+                v_icds.flag != c.vocabulary_id
+        """
 
     final_query: str = f"""
-        (
-            SELECT DISTINCT
-                person_id,
-                date,
-                ICD,
-                flag
-            FROM 
-                ({icd_query})
-            WHERE
-                NOT ICD LIKE "V%"
-        )
-        UNION DISTINCT
-        (
-            SELECT DISTINCT
-                *
-            FROM
-                ({v_icd_vocab_query})
-        )
-    """
-
+            (
+                SELECT DISTINCT
+                    person_id,
+                    date,
+                    ICD,
+                    flag,
+                    occurrence_age
+                FROM 
+                    ({icd_query})
+                WHERE
+                    NOT ICD LIKE "V%"
+            )
+            UNION DISTINCT
+            (
+                SELECT DISTINCT
+                    *
+                FROM
+                    ({v_icd_vocab_query})
+            )
+        """
     return final_query
 
 
@@ -155,9 +180,8 @@ def all_demo_query(ds):
             demos.dob, 
             ages.first_date, 
             ages.last_date,
-            (DATEDIFF(day, demos.dob, ages.first_date) / 365.25) AS first_age,
-            (DATEDIFF(day, demos.dob, ages.last_date) / 365.25) AS last_age
-        FROM 
+            DATE_DIFF(ages.first_date, demos.dob, DAY) / 365.25 AS first_age,
+            DATE_DIFF(ages.last_date, demos.dob, DAY) / 365.25 AS last_age
         FROM 
             (
                 SELECT 

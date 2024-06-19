@@ -1,4 +1,3 @@
-import os
 import polars as pl
 import sys
 import statsmodels.formula.api as smf
@@ -6,7 +5,7 @@ import statsmodels.formula.api as smf
 from PheRS import queries, utils
 
 
-def get_scores(weights=None, disease_phecode_map=None, disease_id=None, output_file_name=None):
+def get_scores(weights_path=None, disease_phecode_map=None, disease_id=None, output_file_name=None):
     """
     Aggregates phecode-specific weights into overall disease risk scores for individuals.
 
@@ -22,9 +21,11 @@ def get_scores(weights=None, disease_phecode_map=None, disease_id=None, output_f
     """
 
     # noinspection PyGlobalUndefined
-    if weights is not None and disease_phecode_map is not None:
-        weights = pl.read_csv(weights)
+    if weights_path is not None and disease_phecode_map is not None:
+        weights = pl.read_csv(weights_path)
+        weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
         disease_phecode_map = pl.read_csv(disease_phecode_map)
+        disease_phecode_map = disease_phecode_map.with_columns(disease_phecode_map["phecode"].cast(pl.Utf8))
         if "disease_id" not in disease_phecode_map.columns and "phecode" not in disease_phecode_map.columns:
             print("Disease_phecode_map file must contain \"disease_id\" and \"phecode\" columns!")
             sys.exit(0)
@@ -33,18 +34,18 @@ def get_scores(weights=None, disease_phecode_map=None, disease_id=None, output_f
               "Please provide a valid file path.")
         sys.exit(0)
 
-    # Validation checks (simplified for this example)
+    # Validation checks
     utils.check_weights(weights)
     utils.check_disease_phecode_map(disease_phecode_map)
 
     if disease_id is not None:
-        disease_phecode_map = disease_phecode_map[disease_phecode_map['disease_id'] == disease_id]
+        disease_phecode_map = disease_phecode_map.filter(pl.col("disease_id") == disease_id)
 
-    # Merge weights with disease phecode map
+    # Merge weights with disease_phecode_map
     merged_data = weights.join(disease_phecode_map, on='phecode', how='inner')
 
     # Calculate scores by summing weights per person per disease
-    scores = merged_data.groupby(['person_id', 'disease_id']).agg(
+    scores = merged_data.group_by(['person_id', 'disease_id']).agg(
         pl.col('w').sum().alias('score')
     )
 
@@ -90,9 +91,10 @@ def get_residual_scores(platform='aou', demos_path=None, scores_path=None, lm_fo
         print('"scores_path" dataframe is required. Please provide a valid file path.')
         sys.exit(0)
 
+    # Validation checks
     utils.check_demos(demo)
     utils.check_scores(scores)
-    utils.check_lm_formula(lm_formula, demo)
+    # utils.check_lm_formula(lm_formula, demo)
 
     # Merge scores with demographic data using Polars
     r_input = scores.join(demo, on='person_id', how='inner')
@@ -110,3 +112,11 @@ def get_residual_scores(platform='aou', demos_path=None, scores_path=None, lm_fo
     # report result
     utils.report_result(r_scores, placeholder="residual_score",
                         output_file_name=output_file_name)
+
+
+if __name__ == "__main__":
+#    get_scores(weights_path="final_weights_linear.csv", disease_phecode_map="disease_phecode.csv",
+#               disease_id=None, output_file_name=None)
+
+#    get_residual_scores(platform='custom', demos_path='/Users/dayoshittu/Downloads/demo_data_sample.csv',
+#                        scores_path='disease_score.csv', lm_formula='score ~ sex + last_age', output_file_name=None)

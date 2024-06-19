@@ -65,13 +65,14 @@ class Weights:
             weights = weights.with_columns(pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
 
         # Reorder columns
-        weights = weights.select(['person_id', 'phecode', 'pred', 'w'])
+        weights = weights.select(['person_id', 'phecode', 'pred', 'w']).unique()
+        weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
 
         return weights
 
     def get_weights_logistic(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False,
                              n_jobs=1):
-        if phecode_occurrences_path is None or method_formula is None:
+        if phecode_occurrences_path is None and method_formula is None:
             print("Both phecode_occurrences path and method_formula are required to calculate weights.")
             sys.exit(0)
 
@@ -92,9 +93,10 @@ class Weights:
 
             if not negative_weights:
                 glm_input = glm_input.with_columns((glm_input['dx_status'] * glm_input['w']).alias('w'))
-                glm_input = glm_input.with_columns(pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
+                glm_input = glm_input.with_columns(
+                    pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
 
-            return glm_input.select(['person_id', 'phecode', 'pred', 'w'])
+            return glm_input.select(['person_id', 'phecode', 'pred', 'w']).unique()
 
         unique_phecodes = phecode_occurrences['phecode'].unique()
         weights_dfs = []
@@ -107,11 +109,12 @@ class Weights:
                     weights_dfs.append(weight_result)
 
         weights = pl.concat(weights_dfs)
+        weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
         return weights
 
     def get_weights_loglinear(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False,
                               n_jobs=1):
-        if phecode_occurrences_path is None or method_formula is None:
+        if phecode_occurrences_path is None and method_formula is None:
             print("Both phecode_occurrences path and method_formula are required to calculate weights.")
             sys.exit(0)
 
@@ -136,7 +139,7 @@ class Weights:
                 lm_input = lm_input.with_columns(
                     pl.when(pl.col('num_occurrences') == 0).then(0).otherwise(lm_input['w']).alias('w'))
 
-            return lm_input.select(['person_id', 'phecode', 'pred', 'w'])
+            return lm_input.select(['person_id', 'phecode', 'pred', 'w']).unique()
 
         unique_phecodes = phecode_occurrences['phecode'].unique()
         weights_dfs = []
@@ -149,6 +152,7 @@ class Weights:
                     weights_dfs.append(weight_result)
 
         weights = pl.concat(weights_dfs)
+        weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
         return weights
 
     def get_weights_cox(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False, n_jobs=1):
@@ -193,9 +197,10 @@ class Weights:
 
             if not negative_weights:
                 cox_input = cox_input.with_columns((cox_input['dx_status'] * cox_input['w']).alias('w'))
-                cox_input = cox_input.with_columns(pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
+                cox_input = cox_input.with_columns(
+                    pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
 
-            return cox_input.select(['person_id', 'phecode', 'pred', 'w'])
+            return cox_input.select(['person_id', 'phecode', 'pred', 'w']).unique()
 
         unique_phecodes = phecode_occurrences['phecode'].unique()
         weights_dfs = []
@@ -208,6 +213,7 @@ class Weights:
                     weights_dfs.append(weight_result)
 
         weights = pl.concat(weights_dfs)
+        weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
         return weights
 
     def get_weights(self, phecode_occurrences_path=None, method='prevalence', method_formula=None,
@@ -230,10 +236,16 @@ class Weights:
             return self.get_weights_prevalence(phecode_occurrences_path, negative_weights)
 
         if method == 'logistic':
+            if method_formula is None:
+                print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
+                sys.exit(0)
             utils.check_method_formula(method_formula, demos)
             return self.get_weights_logistic(phecode_occurrences_path, method_formula, negative_weights, n_jobs)
 
         elif method == 'loglinear':
+            if method_formula is None:
+                print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
+                sys.exit(0)
             utils.check_method_formula(method_formula, demos)
             return self.get_weights_loglinear(phecode_occurrences_path, method_formula, negative_weights, n_jobs)
 
@@ -244,15 +256,15 @@ class Weights:
 if __name__ == '__main__':
     weights = Weights(platform="custom", demo_df_path='/Users/dayoshittu/Downloads/demo_data_sample.csv')
 #    final_weights = weights.get_weights(phecode_occurrences_path='phecode_occurrences.csv',
-#                                            method='prevalence', negative_weights=False)
+#                                        method='prevalence', negative_weights=False)
 
 #    final_weights = weights.get_weights(
 #        phecode_occurrences_path='phecode_occurrences.csv',
-#        method='logistic',
-#        method_formula="sex",
+#        method='cox',
+#        method_formula=None,
 #        negative_weights=False,
 #        n_jobs=4
 #    )
 
 #    utils.report_result(final_weights, placeholder='phecode_occurrences',
-#                        output_file_name='final_weights_linear2.csv')
+#                        output_file_name='final_weights_linear.csv')

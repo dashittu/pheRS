@@ -62,7 +62,7 @@ class PhecodeMap:
         print("\033[1mDone!")
 
     def get_phecode_occurrences(self, phecode_map_file_path=None, dx_icd=None,
-                                phecode_version="X", icd_version="US", include_occurrence_age=False,
+                                phecode_version="1.2", icd_version="US", include_occurrence_age=False,
                                 output_file_name=None):
         """
         Maps ICD occurrences to phecodes by merging ICD occurrence data with a mapping table.

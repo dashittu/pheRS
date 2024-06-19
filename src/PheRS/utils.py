@@ -49,7 +49,7 @@ def get_allofus_demo():
 def get_phecode_mapping(phecode_version, icd_version, phecode_map_file_path, keep_all_columns=True):
     """
     Load phecode mapping table
-    :param phecode_version: defaults to "X"; other option is "1.2"
+    :param phecode_version: defaults to "1.2"; other option is "X"
     :param icd_version: defaults to "US"; other option is "custom";
                         if "custom", user need to provide phecode_map_path
     :param phecode_map_file_path: path to custom phecode map table
@@ -80,6 +80,7 @@ def get_phecode_mapping(phecode_version, icd_version, phecode_map_file_path, kee
                                          "ICD": str,
                                          "flag": pl.Int8,
                                          "code_val": float})
+        phecode_df = phecode_df.with_columns(phecode_df["phecode"].cast(pl.Utf8))
         if not keep_all_columns:
             phecode_df = phecode_df[["phecode", "ICD", "flag"]]
     elif phecode_version == "1.2":
@@ -103,6 +104,7 @@ def get_phecode_mapping(phecode_version, icd_version, phecode_map_file_path, kee
                                          "flag": pl.Int8,
                                          "exclude_range": str,
                                          "phecode_unrolled": str})
+        phecode_df = phecode_df.with_columns(phecode_df["phecode"].cast(pl.Utf8))
         if not keep_all_columns:
             phecode_df = phecode_df[["phecode_unrolled", "ICD", "flag"]]
             phecode_df = phecode_df.rename({"phecode_unrolled": "phecode"})
@@ -114,6 +116,30 @@ def get_phecode_mapping(phecode_version, icd_version, phecode_map_file_path, kee
 
 
 def check_demos(demos, method='prevalence'):
+    """
+        Validates the demographic DataFrame for required columns and checks for unexpected columns.
+
+        Parameters:
+        - demos (pl.DataFrame): The demographic DataFrame to be validated.
+        - method (str): The method for which the DataFrame is being validated. Options are 'prevalence', 'cox',
+                        or 'loglinear'. Default is 'prevalence'.
+
+        Raises:
+        - AssertionError: If the DataFrame is not a Polars DataFrame.
+        - AssertionError: If the required columns are missing from the DataFrame.
+        - AssertionError: If the DataFrame contains unexpected columns.
+        - AssertionError: If 'person_id' is not unique.
+        - AssertionError: If 'first_age' and 'last_age' are not numeric (for 'cox' method).
+        - AssertionError: If 'first_age' or 'last_age' contains negative values (for 'cox' method).
+
+        The function performs the following checks:
+        1. Ensures the input `demos` is a Polars DataFrame.
+        2. Defines required and excluded columns based on the specified method.
+        3. Checks if all required columns are present in the DataFrame.
+        4. Checks if any excluded columns are present in the DataFrame.
+        5. Ensures that the 'person_id' column contains unique values.
+        6. For 'cox' method, ensures 'first_age' and 'last_age' are numeric and non-negative.
+        """
     assert isinstance(demos, pl.DataFrame), "demos must be a polars DataFrame"
     required_cols = ['person_id']
     excluded_cols = ['phecode', 'w', 'disease_id', 'score']
@@ -135,6 +161,24 @@ def check_demos(demos, method='prevalence'):
 
 
 def check_dx_icd(dx_icd, null_ok):
+    """
+       Validates the dx_icd DataFrame based on the provided criteria.
+
+       Parameters:
+       - dx_icd (pl.DataFrame or None): The DataFrame to validate.
+       - null_ok (bool): Whether a None value for dx_icd is acceptable.
+
+       Raises:
+       - AssertionError: If the DataFrame is not of type Polars or contains invalid data.
+       - ValueError: If dx_icd is None and null_ok is False.
+
+       Validation checks:
+       - Ensures dx_icd is a Polars DataFrame or None.
+       - Checks required columns based on null_ok.
+       - Ensures the absence of 'person_id' column.
+       - Validates the 'icd' column contains strings.
+       - Ensures all column names are unique.
+       """
     if dx_icd is not None:
         assert isinstance(dx_icd, pl.DataFrame), "dx_icd must be a Polars DataFrame or None"
         if not null_ok:
@@ -144,7 +188,7 @@ def check_dx_icd(dx_icd, null_ok):
 
         assert all(col in dx_icd.columns for col in required_cols), f"Missing required columns: {required_cols}"
         assert 'person_id' not in dx_icd.columns, "DataFrame should not contain 'person_id' column"
-        assert dx_icd.schema['icd'].dtype == pl.Utf8, "icd column must contain strings"
+        assert dx_icd.schema['icd'] == pl.Utf8, "icd column must contain strings"
         assert len(dx_icd.columns) == len(set(dx_icd.columns)), "All column names must be unique"
     elif not null_ok:
         raise ValueError("dx_icd cannot be None unless null_ok is True")
@@ -155,7 +199,7 @@ def check_icd_phecode_map(icd_phecode_map):
     Validate the structure and content of the ICD-Phecode Mapping DataFrame.
 
     Parameters:
-    - icd_phecode_map: pandas DataFrame containing the ICD-Phecode mapping information.
+    - icd_phecode_map: polars DataFrame containing the ICD-Phecode mapping information.
 
     The function checks:
     - The DataFrame must contain the columns 'phecode', 'icd', 'flag'.
@@ -198,7 +242,7 @@ def check_icd_occurrences(icd_occurrences, cols=None):
     - cols: list, the required columns in the ICD occurrences data.
 
     The function checks:
-    - icd_occurrences is a pandas DataFrame.
+    - icd_occurrences is a polars DataFrame.
     - It contains specific required columns and doesn't include disallowed columns.
     - The 'icd' column must contain strings.
     - The DataFrame should have no duplicate rows.
@@ -207,7 +251,7 @@ def check_icd_occurrences(icd_occurrences, cols=None):
     if cols is None:
         cols = ['person_id', 'ICD', 'flag']
     if not isinstance(icd_occurrences, pl.DataFrame):
-        raise ValueError("icd_occurrences must be a pandas DataFrame")
+        raise ValueError("icd_occurrences must be a polars DataFrame")
 
     # Check for required columns
     missing_cols = [col for col in cols if col not in icd_occurrences.columns]
@@ -240,7 +284,7 @@ def check_phecode_occurrences(phecode_occurrences, demos, method='prevalence'):
 
     Parameters:
     - phecode_occurrences: polars DataFrame, the phecode occurrences data.
-    - demos: pandas DataFrame, demographic information of individuals in the cohort.
+    - demos: polars DataFrame, demographic information of individuals in the cohort.
     - method: str, the analysis method that affects validation rules.
 
     Raises:
@@ -322,24 +366,21 @@ def check_weights(weights):
         raise ValueError("Duplicates found based on 'person_id' and 'phecode'")
 
     # Validate 'phecode' column is character type
-    if weights.schema['phecode'].dtype != pl.Utf8:
+    if weights.schema['phecode'] != pl.Utf8:
         raise ValueError("Column 'phecode' must contain strings")
 
     # Validate 'w' column is numeric and finite
     numeric_dtypes = [pl.Float32, pl.Float64, pl.Int32, pl.Int64]
-    if weights.schema['w'].dtype not in numeric_dtypes:
+    if weights.schema['w'] not in numeric_dtypes:
         raise ValueError("Column 'w' must be numeric")
     if weights.filter(pl.col('w').is_null() | pl.col('w').is_infinite()).height > 0:
         raise ValueError("Column 'w' must contain only finite numbers")
-
-    # Optionally, assert that all weights are non-negative (if applicable)
-    # if weights.filter(pl.col('w') < 0).height() > 0:
-    #         raise ValueError("Column 'w' must contain non-negative values only")
 
 
 def check_disease_phecode_map(disease_phecode_map):
     """
     Validates the disease_phecode_map DataFrame to ensure it meets the expected structure and types.
+    This is the dataframe generated from map.py
 
     Parameters:
     - disease_phecode_map: polars DataFrame, the disease to phecode mapping data to validate.
@@ -371,8 +412,10 @@ def check_disease_phecode_map(disease_phecode_map):
     if disease_phecode_map.schema['phecode'] != pl.Utf8:
         raise ValueError("Column 'phecode' must contain strings")
 
-        # Check for duplicates based on 'disease_id' and 'phecode'
-    if disease_phecode_map.duplicated(subset=['disease_id', 'phecode']).sum() > 0:
+    # Check for duplicates based on 'disease_id' and 'phecode'
+    duplicates = disease_phecode_map.groupby(['disease_id', 'phecode']).count()
+
+    if (duplicates['count'] > 1).any():
         raise ValueError("Duplicates found based on 'disease_id' and 'phecode'")
 
 
@@ -404,7 +447,7 @@ def check_scores(scores):
 
     # Validate 'score' column is numeric and contains only finite values
     numeric_dtypes = [pl.Int32, pl.Int64, pl.Float32, pl.Float64]
-    if scores.schema['score'].dtype not in numeric_dtypes:
+    if scores.schema['score'] not in numeric_dtypes:
         raise ValueError("Column 'score' must contain numeric data")
     if scores.filter(pl.col('score').is_null() | pl.col('score').is_infinite()).height > 0:
         raise ValueError("Column 'score' must contain only finite numbers")
@@ -412,203 +455,6 @@ def check_scores(scores):
     # Check for duplicates based on 'person_id' and 'disease_id'
     if scores.unique(subset=['person_id', 'disease_id']).height != scores.height:
         raise ValueError("Duplicates found based on 'person_id' and 'disease_id'")
-
-
-"""def check_genotypes(genotypes):
-"""
-"""
-    Validates the genotypes DataFrame to ensure it meets the expected structure and types.
-
-    Parameters:
-    - genotypes: pandas DataFrame, containing the genotypes data to validate.
-"""
-"""   
-    # Assuming genotypes is a pandas DataFrame
-#    if not isinstance(genotypes, pd.DataFrame):
-#        raise TypeError("Genotypes must be a pandas DataFrame")
-
-    # Check for unique row indices
-#    if genotypes.index.duplicated().any():
-#        raise ValueError("Row names (indices) in genotypes must be unique")
-
-    # Check for unique column names
-#    if genotypes.columns.duplicated().any():
-#        raise ValueError("Column names in genotypes must be unique")
-
-    # Ensure column names do not include 'score'
-#    if 'score' in genotypes.columns:
-#        raise ValueError("Column names in genotypes should not include 'score'")
-
-"""
-"""
-def check_disease_variant_map(disease_variant_map, scores, genotypes):
-"""
-"""
-    Validates the disease variant mapping DataFrame.
-
-    Parameters:
-    - disease_variant_map: pandas DataFrame, the mapping between disease IDs and variant IDs.
-    - scores: pandas DataFrame, containing scores for diseases.
-    - genotypes: pandas DataFrame or BEDMatrix, containing genotype information.
-    """
-"""
-    # Check for a pandas DataFrame
-#    if not isinstance(disease_variant_map, pd.DataFrame):
-#        raise TypeError("disease_variant_map must be a pandas DataFrame")
-
-    # Check for unique column names and required columns
-#    if disease_variant_map.columns.duplicated().any():
-#        raise ValueError("Column names in disease_variant_map must be unique")
-#    if not {'disease_id', 'variant_id'}.issubset(disease_variant_map.columns):
-#        raise ValueError("disease_variant_map must include 'disease_id' and 'variant_id' columns")
-#    if disease_variant_map.duplicated(subset=['disease_id', 'variant_id']).any():
-#        raise ValueError("Duplicates found in 'disease_id' and 'variant_id' combinations")
-
-    # Check if disease_id in disease_variant_map is a subset of those in scores
-#    if not set(disease_variant_map['disease_id']).issubset(set(scores['disease_id'])):
-#        raise ValueError("All disease_id values in disease_variant_map must be present in scores")
-
-    # Check if variant_id in disease_variant_map is a subset of genotype columns
-    # (assuming genotypes as DataFrame for simplicity)
-#    if isinstance(genotypes, pd.DataFrame):  # Adjust as needed for BEDMatrix equivalent in Python
-#        if not set(disease_variant_map['variant_id']).issubset(genotypes.columns):
-#            raise ValueError("All variant_id values in disease_variant_map must be column names in genotypes")
-#    else:
-#        raise TypeError("genotypes should be a pandas DataFrame or a BEDMatrix equivalent")
-"""
-
-
-def check_lm_formula(lm_formula, demos):
-    """
-    Validates the linear model formula to ensure that it only contains allowed variables from a polars DataFrame
-    and does not specify a dependent variable, which is not appropriate in this context.
-
-    Parameters:
-    - lm_formula: string, the formula for the linear model.
-    - demos: polars DataFrame, containing demographic and other relevant data for the model.
-
-    Raises:
-    - ValueError: If the formula is incorrectly specified or contains disallowed variables.
-    """
-    # Parsing the formula to check its validity and extract terms
-    try:
-        terms = ModelDesc.from_formula(lm_formula)
-    except Exception as e:
-        raise ValueError(f"Error parsing formula: {e}")
-
-    # Extracting predictor terms from the formula (assuming the left side of ~ is empty which is required)
-    term_names = [str(term) for factor in terms for term in factor.factors if str(term) != '1']
-
-    # Ensure the terms in the formula are present in demos columns and do not include disallowed names
-    disallowed_names = {'score', 'allele_count', 'person_id', 'disease_id'}
-    missing_terms = [term for term in term_names if term not in demos.columns]
-    disallowed_terms = [term for term in term_names if term in disallowed_names]
-
-    if missing_terms:
-        raise ValueError(f"Formula terms not found in demos: {missing_terms}")
-    if disallowed_terms:
-        raise ValueError(f"Formula contains disallowed terms: {disallowed_terms}")
-
-    # Check if the formula implies a dependent variable by checking the structure of the parsed terms
-    if terms.lhs_termlist:
-        raise ValueError("The formula contains a dependent variable, which is not allowed.")
-
-
-def check_lm_input(lm_input):
-    """
-    Validates the linear model input DataFrame.
-
-    Parameters:
-    - lm_input: pandas DataFrame, expected to contain 'score' and 'allele_count' columns.
-    """
-    # Ensure lm_input is a pandas DataFrame
-    if not isinstance(lm_input, pl.DataFrame):
-        raise ValueError("lm_input must be a polars DataFrame.")
-
-    # Check required columns
-    required_columns = {'score', 'allele_count'}
-    missing_columns = required_columns - set(lm_input.columns)
-    if missing_columns:
-        raise ValueError(f"Missing required columns: {missing_columns}")
-
-    # Check allele_count is numeric and finite
-    numeric_dtypes = [pl.Int32, pl.Int64, pl.Float32, pl.Float64]
-    if lm_input.schema['allele_count'].dtype not in numeric_dtypes:
-        raise ValueError("allele_count must be numeric.")
-    if lm_input.filter(pl.col('allele_count').is_null() | pl.col('allele_count').is_infinite()).height > 0:
-        raise ValueError("allele_count must contain finite values.")
-
-    # Create a mask where False indicates values outside {0, 1, 2}
-    invalid_mask = lm_input.select(pl.col('allele_count').is_in([0, 1, 2]).alias('valid')).filter(
-        pl.col('valid') is False)
-
-    # Check if any False values exist
-    if invalid_mask.height > 0:
-        raise ValueError("allele_count must contain values in [0, 1, 2].")
-
-
-def get_allele_counts(lm_input):
-    """
-    Calculates counts of wild-type, heterozygous, and homozygous alleles from a pandas DataFrame
-    containing allele count data. Ensures input validation and returns a DataFrame with the total count and
-    counts for each allele type.
-
-    Parameters:
-    - lm_input: pandas DataFrame, expected to contain an 'allele_count' column.
-
-    Returns:
-    A pandas DataFrame with the following columns:
-        - n_total: Total number of observations
-        - n_wt: Number of wild-type alleles (allele_count == 0)
-        - n_het: Number of heterozygous alleles (allele_count == 1)
-        - n_hom: Number of homozygous alleles (allele_count == 2)
-
-    Raises:
-    - ValueError: If the input DataFrame does not contain the required 'allele_count' column.
-    """
-    # Check if 'allele_count' column exists in the DataFrame
-    if 'allele_count' not in lm_input.columns:
-        raise ValueError("The DataFrame must contain an 'allele_count' column.")
-
-    # Calculate allele counts
-    n_total = lm_input.height
-    n_wt = (lm_input['allele_count'] == 0).height
-    n_het = (lm_input['allele_count'] == 1).height
-    n_hom = (lm_input['allele_count'] == 2).height
-
-    # Create a DataFrame to store the counts
-    d_counts = pl.DataFrame({
-        'n_total': [n_total],
-        'n_wt': [n_wt],
-        'n_het': [n_het],
-        'n_hom': [n_hom]
-    })
-
-    return d_counts
-
-
-"""
-def report_subset_assertions(x, choices):
-"""
-"""
-    Checks if all elements in x are present within choices and raises an error if not.
-
-    Parameters:
-    - x: Iterable, elements to check.
-    - choices: Iterable, collection to check against.
-"""
-"""
-    # Convert iterables to sets for efficient membership checking
-    x_set = set(x)
-    choices_set = set(choices)
-
-    # Check if x is a subset of choices
-    if not x_set.issubset(choices_set):
-        # Find elements in x that are not in choices
-        missing_elements = x_set.difference(choices_set)
-        msg = f"Elements {missing_elements} in x must be a subset of choices."
-        raise ValueError(msg)
-"""
 
 
 def check_method_formula(method_formula, demos):

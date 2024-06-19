@@ -1,4 +1,4 @@
-def all_icd_query(ds):
+def all_icd_query(cdr):
     """
     This method is optimized for All of Us platform. The code is coming from Tam's PheTK package with a few
     modifications to do what I want.
@@ -12,7 +12,7 @@ def all_icd_query(ds):
     The reason for this is to ensure vocabulary_id values of V codes, many of which overlap between ICD9CM & ICD10CM,
     are correct.
 
-    :param ds: Google BigQuery dataset ID containing OMOP data tables
+    :param cdr: Google BigQuery dataset ID containing OMOP data tables
     :return: a SQL query that would generate a table contains participant IDs and their ICD codes from unique dates
     """
     icd_query: str = f"""
@@ -26,13 +26,13 @@ def all_icd_query(ds):
                 DATE(p.birth_datetime) AS dob,
                 DATE_DIFF(co.condition_start_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
             FROM
-                {ds}.condition_occurrence AS co
+                {cdr}.condition_occurrence AS co
             INNER JOIN
-                {ds}.concept AS c
+                {cdr}.concept AS c
             ON
                 co.condition_source_value = c.concept_code
             INNER JOIN
-                {ds}.person AS p
+                {cdr}.person AS p
             ON
                 co.person_id = p.person_id
             WHERE
@@ -49,13 +49,13 @@ def all_icd_query(ds):
                 DATE(p.birth_datetime) AS dob,
                 DATE_DIFF(co.condition_start_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
             FROM
-                {ds}.condition_occurrence AS co
+                {cdr}.condition_occurrence AS co
             INNER JOIN
-                {ds}.concept AS c
+                {cdr}.concept AS c
             ON
                 co.condition_source_concept_id = c.concept_id
             INNER JOIN
-                {ds}.person AS p
+                {cdr}.person AS p
             ON
                 co.person_id = p.person_id
             WHERE
@@ -72,13 +72,13 @@ def all_icd_query(ds):
                 DATE(p.birth_datetime) AS dob,
                 DATE_DIFF(o.observation_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
             FROM
-                {ds}.observation AS o
+                {cdr}.observation AS o
             INNER JOIN
-                {ds}.concept AS c
+                {cdr}.concept AS c
             ON
                 o.observation_source_value = c.concept_code
             INNER JOIN
-                {ds}.person AS p
+                {cdr}.person AS p
             ON
                 o.person_id = p.person_id
             WHERE
@@ -95,13 +95,13 @@ def all_icd_query(ds):
                 DATE(p.birth_datetime) AS dob,
                 DATE_DIFF(o.observation_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
             FROM
-                {ds}.observation AS o
+                {cdr}.observation AS o
             INNER JOIN
-                {ds}.concept AS c
+                {cdr}.concept AS c
             ON
                 o.observation_source_concept_id = c.concept_id
             INNER JOIN
-                {ds}.person AS p
+                {cdr}.person AS p
             ON
                 o.person_id = p.person_id
             WHERE
@@ -126,11 +126,11 @@ def all_icd_query(ds):
                         icd_events.ICD LIKE "V%"
                 ) AS v_icds
             INNER JOIN
-                {ds}.concept_relationship AS cr
+                {cdr}.concept_relationship AS cr
             ON
                 v_icds.concept_id = cr.concept_id_1
             INNER JOIN
-                {ds}. concept AS c
+                {cdr}. concept AS c
             ON
                 cr.concept_id_2 = c.concept_id
             WHERE
@@ -165,11 +165,11 @@ def all_icd_query(ds):
     return final_query
 
 
-def all_demo_query(ds):
+def all_demo_query(cdr):
     """
     This method is optimized for the All of Us platform. This query generates a table containing participant IDs and
     their ICD codes from unique dates
-    :param ds: Google BigQuery dataset ID containing OMOP data tables
+    :param cdr: Google BigQuery dataset ID containing OMOP data tables
     :return: a SQL query that would generate a table contains participant IDs and their demographic characteristics
     """
 
@@ -194,11 +194,11 @@ def all_demo_query(ds):
                             p.person_id, 
                             DATE(e.condition_start_date) AS entry_date
                         FROM 
-                            {ds}.condition_occurrence e
+                            {cdr}.condition_occurrence e
                         JOIN 
-                            {ds}.person p ON p.person_id = e.person_id
+                            {cdr}.person p ON p.person_id = e.person_id
                         JOIN 
-                            {ds}.concept co ON co.concept_id = e.condition_source_concept_id
+                            {cdr}.concept co ON co.concept_id = e.condition_source_concept_id
                         WHERE 
                             co.vocabulary_id IN ('ICD9CM', 'ICD10CM')
                         GROUP BY 
@@ -214,9 +214,9 @@ def all_demo_query(ds):
                     c1.concept_name AS sex, 
                     DATE(birth_datetime) AS dob 
                 FROM 
-                    {ds}.person p1
+                    {cdr}.person p1
                 JOIN 
-                    {ds}.concept c1 ON c1.concept_id = p1.sex_at_birth_concept_id
+                    {cdr}.concept c1 ON c1.concept_id = p1.sex_at_birth_concept_id
             ) AS demos ON ages.person_id = demos.person_id;
        
         """

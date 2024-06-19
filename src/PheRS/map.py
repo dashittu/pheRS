@@ -53,8 +53,9 @@ def map_disease_to_phecode(data_version, disease_hpo_map_file, hpo_phecode_map_f
     hpo_phecode_df = pl.read_csv(hpo_phecode_path,
                                  dtypes={"hpo_term_id": str,
                                          "hpo_term_name": str,
-                                         "phecode": pl.Float64,
+                                         "phecode": str,
                                          "phecode_name": str})
+    hpo_phecode_df = hpo_phecode_df.with_columns(hpo_phecode_df["phecode"].cast(pl.Utf8))
 
     # Validate input dataframes
     for df, required_cols in zip([disease_hpo_df, hpo_phecode_df],
@@ -70,8 +71,9 @@ def map_disease_to_phecode(data_version, disease_hpo_map_file, hpo_phecode_map_f
     # Drop duplicates to ensure uniqueness and select only the required columns
     disease_phecode_map = disease_phecode_map.select(['disease_id', 'phecode']).unique()
 
-    # Optionally, you could sort the DataFrame for easier readability
+    # Sort the DataFrame for easier readability
     disease_phecode_map = disease_phecode_map.sort(by=['disease_id', 'phecode'])
+    disease_phecode_map = disease_phecode_map.with_columns(disease_phecode_map["phecode"].cast(pl.Utf8))
 
     # report result
     utils.report_result(disease_phecode_map, placeholder="disease_phecode_map",
@@ -80,4 +82,4 @@ def map_disease_to_phecode(data_version, disease_hpo_map_file, hpo_phecode_map_f
 
 # if __name__ == "__main__":
 #    map_disease_to_phecode(data_version=None, disease_hpo_map_file=None,
-#                           hpo_phecode_map_file=None, output_file_name="output.csv")
+#                           hpo_phecode_map_file=None, output_file_name="disease_phecode.csv")

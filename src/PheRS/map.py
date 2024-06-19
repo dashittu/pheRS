@@ -79,7 +79,3 @@ def map_disease_to_phecode(data_version, disease_hpo_map_file, hpo_phecode_map_f
     utils.report_result(disease_phecode_map, placeholder="disease_phecode_map",
                         output_file_name=output_file_name)
 
-
-# if __name__ == "__main__":
-#    map_disease_to_phecode(data_version=None, disease_hpo_map_file=None,
-#                           hpo_phecode_map_file=None, output_file_name="disease_phecode.csv")

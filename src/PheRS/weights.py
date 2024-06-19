@@ -253,19 +253,3 @@ class Weights:
         elif method == 'cox':
             return self.get_weights_cox(phecode_occurrences_path, method_formula, negative_weights, n_jobs)
 
-
-if __name__ == '__main__':
-    weights = Weights(platform="custom", demo_df_path='/Users/dayoshittu/Downloads/demo_data_sample.csv')
-#    final_weights = weights.get_weights(phecode_occurrences_path='phecode_occurrences.csv',
-#                                        method='prevalence', negative_weights=False)
-
-#    final_weights = weights.get_weights(
-#        phecode_occurrences_path='phecode_occurrences.csv',
-#        method='cox',
-#        method_formula=None,
-#        negative_weights=False,
-#        n_jobs=4
-#    )
-
-#    utils.report_result(final_weights, placeholder='phecode_occurrences',
-#                        output_file_name='final_weights_linear.csv')

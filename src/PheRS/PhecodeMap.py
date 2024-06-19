@@ -139,13 +139,3 @@ class PhecodeMap:
         # report result
         utils.report_result(phecode_occurrences, placeholder='phecode_occurrences',
                             output_file_name=output_file_name)
-
-
-# if __name__ == "__main__":
-#    phecode = PhecodeMap(platform='custom', icd_df_path='/Users/dayoshittu/Downloads/icd_data_sample.csv')
-#    phecode.get_phecode_occurrences(phecode_map_file_path=None,
-#                                    dx_icd=None,
-#                                    phecode_version="1.2",
-#                                    icd_version="US",
-#                                    include_occurrence_age=True,
-#                                    output_file_name=None)

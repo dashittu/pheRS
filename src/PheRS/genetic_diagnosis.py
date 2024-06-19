@@ -85,12 +85,3 @@ def get_dx_status(platform='aou', demos_path=None, icd_occurrences_path=None, mi
     dx_status = dx_status.fill_null(0).with_columns(pl.col('dx_status').cast(pl.Int32))
 
     return dx_status
-
-
-# if __name__ == "__main__":
-#    dx_status = get_dx_status(platform='custom', demos_path='/Users/dayoshittu/Downloads/demo_data_sample.csv',
-#                              icd_occurrences_path='/Users/dayoshittu/Downloads/icd_data_sample.csv',
-#                              min_unique_ages=2)
-
-#    utils.report_result(dx_status, placeholder='dx_status',
-#                        output_file_name=None)

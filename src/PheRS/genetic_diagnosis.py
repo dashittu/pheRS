@@ -5,7 +5,8 @@ import polars as pl
 from src.PheRS import utils
 
 
-def get_dx_status(platform='aou', demos_path=None, icd_occurrences_path=None, min_unique_ages=2, disease_dx_icd_map=None):
+def get_dx_status(platform='aou', demos_path=None, icd_occurrences_path=None, min_unique_ages=2,
+                  disease_dx_icd_map=None, output_file_name=None):
     """
     Calculate dx_status for each person and disease based on ICD occurrences.
 
@@ -84,4 +85,5 @@ def get_dx_status(platform='aou', demos_path=None, icd_occurrences_path=None, mi
     # Fill NaN values in dx_status with 0
     dx_status = dx_status.fill_null(0).with_columns(pl.col('dx_status').cast(pl.Int32))
 
-    return dx_status
+    # Report result
+    utils.report_result(dx_status, placeholder='dx_status', output_file_name=output_file_name)

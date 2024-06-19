@@ -35,7 +35,7 @@ class Weights:
 
         print("\033[1mDone!")
 
-    def get_weights_prevalence(self, phecode_occurrences_path=None, negative_weights=False):
+    def get_weights_prevalence(self, phecode_occurrences_path=None, negative_weights=False, output_file_name=None):
         if phecode_occurrences_path is None:
             print("phecode_occurrences path is required to calculate weights.")
             sys.exit(0)
@@ -69,10 +69,11 @@ class Weights:
         weights = weights.select(['person_id', 'phecode', 'pred', 'w']).unique()
         weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
 
-        return weights
+        # Report result
+        utils.report_result(weights, placeholder='weights_prevalence', output_file_name=output_file_name)
 
     def get_weights_logistic(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False,
-                             n_jobs=1):
+                             n_jobs=1, output_file_name=None):
         if phecode_occurrences_path is None and method_formula is None:
             print("Both phecode_occurrences path and method_formula are required to calculate weights.")
             sys.exit(0)
@@ -111,10 +112,12 @@ class Weights:
 
         weights = pl.concat(weights_dfs)
         weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
-        return weights
+
+        # Report result
+        utils.report_result(weights, placeholder='weights_logistic', output_file_name=output_file_name)
 
     def get_weights_loglinear(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False,
-                              n_jobs=1):
+                              n_jobs=1, output_file_name=None):
         if phecode_occurrences_path is None and method_formula is None:
             print("Both phecode_occurrences path and method_formula are required to calculate weights.")
             sys.exit(0)
@@ -154,9 +157,12 @@ class Weights:
 
         weights = pl.concat(weights_dfs)
         weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
-        return weights
 
-    def get_weights_cox(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False, n_jobs=1):
+        # Report result
+        utils.report_result(weights, placeholder='weights_linear', output_file_name=output_file_name)
+
+    def get_weights_cox(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False, n_jobs=1,
+                        output_file_name=None):
         if phecode_occurrences_path is None:
             print("phecode_occurrences path is required to calculate weights.")
             sys.exit(0)
@@ -215,10 +221,12 @@ class Weights:
 
         weights = pl.concat(weights_dfs)
         weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
-        return weights
+
+        # Report result
+        utils.report_result(weights, placeholder='weights_cox', output_file_name=output_file_name)
 
     def get_weights(self, phecode_occurrences_path=None, method='prevalence', method_formula=None,
-                    negative_weights=False, n_jobs=1):
+                    negative_weights=False, n_jobs=1, output_file_name=None):
         if phecode_occurrences_path is None:
             print("phecode_occurrences path is required to calculate weights.")
             sys.exit(0)
@@ -234,21 +242,24 @@ class Weights:
             sys.exit(0)
 
         if method == 'prevalence':
-            return self.get_weights_prevalence(phecode_occurrences_path, negative_weights)
+            self.get_weights_prevalence(phecode_occurrences_path, negative_weights, output_file_name=output_file_name)
 
         if method == 'logistic':
             if method_formula is None:
                 print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
                 sys.exit(0)
             utils.check_method_formula(method_formula, demos)
-            return self.get_weights_logistic(phecode_occurrences_path, method_formula, negative_weights, n_jobs)
+            self.get_weights_logistic(phecode_occurrences_path, method_formula, negative_weights, n_jobs,
+                                      output_file_name=output_file_name)
 
         elif method == 'loglinear':
             if method_formula is None:
                 print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
                 sys.exit(0)
             utils.check_method_formula(method_formula, demos)
-            return self.get_weights_loglinear(phecode_occurrences_path, method_formula, negative_weights, n_jobs)
+            self.get_weights_loglinear(phecode_occurrences_path, method_formula, negative_weights, n_jobs,
+                                       output_file_name=output_file_name)
 
         elif method == 'cox':
-            return self.get_weights_cox(phecode_occurrences_path, method_formula, negative_weights, n_jobs)
+            self.get_weights_cox(phecode_occurrences_path, method_formula, negative_weights, n_jobs,
+                                 output_file_name=output_file_name)

@@ -1,6 +1,7 @@
 import sys
 import os
 import polars as pl
+# noinspection PyUnresolvedReferences,PyProtectedMember
 from src.PheRS import utils
 
 
@@ -86,9 +87,10 @@ def get_dx_status(platform='aou', demos_path=None, icd_occurrences_path=None, mi
     return dx_status
 
 
-if __name__ == "__main__":
-    dx_status = get_dx_status(platform='custom', demos_path='/Users/dayoshittu/Downloads/demo_data_sample.csv',
-                              icd_occurrences_path='/Users/dayoshittu/Downloads/icd_data_sample.csv', min_unique_ages=2)
+# if __name__ == "__main__":
+#    dx_status = get_dx_status(platform='custom', demos_path='/Users/dayoshittu/Downloads/demo_data_sample.csv',
+#                              icd_occurrences_path='/Users/dayoshittu/Downloads/icd_data_sample.csv',
+#                              min_unique_ages=2)
 
-    utils.report_result(dx_status, placeholder='dx_status',
-                        output_file_name=None)
+#    utils.report_result(dx_status, placeholder='dx_status',
+#                        output_file_name=None)

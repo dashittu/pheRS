@@ -1,0 +1,8 @@
+google-cloud-bigquery
+lifelines
+numpy
+pandas
+polars<=0.20.26
+pyarrow
+statsmodels
+setuptools

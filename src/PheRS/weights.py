@@ -9,6 +9,7 @@ from statsmodels.genmod.families import Binomial
 from lifelines import CoxPHFitter
 
 from patsy import EvalEnvironment
+# noinspection PyUnresolvedReferences,PyProtectedMember
 from src.PheRS import utils
 
 

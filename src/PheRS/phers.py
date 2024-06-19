@@ -114,7 +114,7 @@ def get_residual_scores(platform='aou', demos_path=None, scores_path=None, lm_fo
                         output_file_name=output_file_name)
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 #    get_scores(weights_path="final_weights_linear.csv", disease_phecode_map="disease_phecode.csv",
 #               disease_id=None, output_file_name=None)
 

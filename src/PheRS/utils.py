@@ -1,4 +1,3 @@
-from patsy.desc import ModelDesc
 from google.cloud import bigquery
 import os
 import polars as pl

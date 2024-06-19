@@ -252,4 +252,3 @@ class Weights:
 
         elif method == 'cox':
             return self.get_weights_cox(phecode_occurrences_path, method_formula, negative_weights, n_jobs)
-

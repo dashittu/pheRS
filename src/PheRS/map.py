@@ -2,7 +2,7 @@ import os
 import polars as pl
 import sys
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from src.PheRS import utils
+from pheRS.src.PheRS import utils
 
 
 def map_disease_to_phecode(data_version, disease_hpo_map_file, hpo_phecode_map_file, output_file_name=None):

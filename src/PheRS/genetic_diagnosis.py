@@ -2,7 +2,7 @@ import sys
 import os
 import polars as pl
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from src.PheRS import utils
+from pheRS.src.PheRS import utils
 
 
 def get_dx_status(platform='aou', demos_path=None, icd_occurrences_path=None, min_unique_ages=2,

@@ -10,7 +10,7 @@ from lifelines import CoxPHFitter
 
 from patsy import EvalEnvironment
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from src.PheRS import utils
+from pheRS.src.PheRS import utils
 
 
 class Weights:

@@ -3,7 +3,7 @@ import os
 import polars as pl
 import sys
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from PheRS import queries
+from pheRS.src.PheRS import queries
 
 
 def to_polars(df):

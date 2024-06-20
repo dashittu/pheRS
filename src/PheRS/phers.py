@@ -2,7 +2,7 @@ import polars as pl
 import sys
 import statsmodels.formula.api as smf
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from PheRS import queries, utils
+from pheRS.src.PheRS import queries, utils
 
 
 def get_scores(weights_path=None, disease_phecode_map=None, disease_id=None, output_file_name=None):

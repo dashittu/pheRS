@@ -20,7 +20,7 @@ def all_icd_query(cdr):
             SELECT DISTINCT
                 co.person_id,
                 co.condition_start_date AS date,
-                c.vocabulary_id AS flag,
+                c.vocabulary_id AS vocabulary_id,
                 c.concept_code AS ICD,
                 co.condition_concept_id AS concept_id,
                 DATE(p.birth_datetime) AS dob,
@@ -43,7 +43,7 @@ def all_icd_query(cdr):
             SELECT DISTINCT
                 co.person_id,
                 co.condition_start_date AS date,
-                c.vocabulary_id AS flag,
+                c.vocabulary_id AS vocabulary_id,
                 c.concept_code AS ICD,
                 co.condition_concept_id AS concept_id,
                 DATE(p.birth_datetime) AS dob,
@@ -66,7 +66,7 @@ def all_icd_query(cdr):
             SELECT DISTINCT
                 o.person_id,
                 o.observation_date AS date,
-                c.vocabulary_id AS flag,
+                c.vocabulary_id AS vocabulary_id,
                 c.concept_code AS ICD,
                 o.observation_concept_id AS concept_id,
                 DATE(p.birth_datetime) AS dob,
@@ -89,7 +89,7 @@ def all_icd_query(cdr):
             SELECT DISTINCT
                 o.person_id,
                 o.observation_date AS date,
-                c.vocabulary_id AS flag,
+                c.vocabulary_id AS vocabulary_id,
                 c.concept_code AS ICD,
                 o.observation_concept_id AS concept_id,
                 DATE(p.birth_datetime) AS dob,
@@ -114,7 +114,7 @@ def all_icd_query(cdr):
                 v_icds.person_id,
                 v_icds.date,
                 v_icds.ICD,
-                c.vocabulary_id AS flag,
+                c.vocabulary_id,
                 v_icds.occurrence_age
             FROM
                 (
@@ -138,7 +138,7 @@ def all_icd_query(cdr):
             AND
                 v_icds.ICD = c.concept_code
             AND NOT
-                v_icds.flag != c.vocabulary_id
+                v_icds.vocabulary_id != c.vocabulary_id
         """
 
     final_query: str = f"""
@@ -147,7 +147,7 @@ def all_icd_query(cdr):
                     person_id,
                     date,
                     ICD,
-                    flag,
+                    vocabulary_id,
                     occurrence_age
                 FROM 
                     ({icd_query})

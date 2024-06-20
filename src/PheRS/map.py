@@ -29,14 +29,14 @@ def map_disease_to_phecode(data_version, disease_hpo_map_file, hpo_phecode_map_f
         disease_hpo_path_suffix = "disease_hpo_map_omim.csv"
         hpo_phecode_path_suffix = "HPO_phecode_map.csv"
     elif data_version == "custom":
-        if disease_hpo_map_file is None or hpo_phecode_map_file is None:
+        if disease_hpo_map_file is None and hpo_phecode_map_file is None:
             print("Either disease_hpo_map_file or hpo_phecode_map_file path is None. "
                   "Please provide path for custom data")
             sys.exit(0)
     else:
         print("Invalid data_version. Available data_version value is either None or custom.")
         sys.exit(0)
-    if disease_hpo_map_file is None or hpo_phecode_map_file is None:
+    if disease_hpo_map_file is None and hpo_phecode_map_file is None:
         disease_hpo_path = os.path.join(final_file_path, disease_hpo_path_suffix)
         hpo_phecode_path = os.path.join(final_file_path, hpo_phecode_path_suffix)
     else:

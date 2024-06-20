@@ -24,7 +24,7 @@ def all_icd_query(cdr):
                 c.concept_code AS ICD,
                 co.condition_concept_id AS concept_id,
                 DATE(p.birth_datetime) AS dob,
-                DATE_DIFF(co.condition_start_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
+                ROUND(DATE_DIFF(co.condition_start_date, DATE(p.birth_datetime), DAY) / 365.25) AS occurrence_age
             FROM
                 {cdr}.condition_occurrence AS co
             INNER JOIN
@@ -47,7 +47,7 @@ def all_icd_query(cdr):
                 c.concept_code AS ICD,
                 co.condition_concept_id AS concept_id,
                 DATE(p.birth_datetime) AS dob,
-                DATE_DIFF(co.condition_start_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
+                ROUND(DATE_DIFF(co.condition_start_date, DATE(p.birth_datetime), DAY) / 365.25) AS occurrence_age
             FROM
                 {cdr}.condition_occurrence AS co
             INNER JOIN
@@ -180,8 +180,8 @@ def all_demo_query(cdr):
             demos.dob, 
             ages.first_date, 
             ages.last_date,
-            DATE_DIFF(ages.first_date, demos.dob, DAY) / 365.25 AS first_age,
-            DATE_DIFF(ages.last_date, demos.dob, DAY) / 365.25 AS last_age
+            ROUND(DATE_DIFF(ages.first_date, demos.dob, DAY) / 365.25) AS first_age,
+            ROUND(DATE_DIFF(ages.last_date, demos.dob, DAY) / 365.25) AS last_age
         FROM 
             (
                 SELECT 

@@ -2,7 +2,7 @@ import os
 import polars as pl
 import sys
 # noinspection PyUnresolvedReferences,PyProtectedMember
-from src.PheRS import queries, utils
+from PheRS import queries, utils
 
 
 class PhecodeMap:

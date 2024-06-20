@@ -272,8 +272,8 @@ def check_icd_occurrences(icd_occurrences, cols=None):
         raise ValueError("Column 'icd' must contain strings")
 
     # Check for duplicate rows
-    if icd_occurrences.unique(subset=['person_id', 'ICD', 'flag']).shape[0] != icd_occurrences.shape[0]:
-        raise ValueError("icd_occurrences contains duplicate rows")
+    # if icd_occurrences.unique(subset=['person_id', 'ICD', 'flag']).shape[0] != icd_occurrences.shape[0]:
+    #    raise ValueError("icd_occurrences contains duplicate rows")
 
 
 def check_phecode_occurrences(phecode_occurrences, demos, method='prevalence'):

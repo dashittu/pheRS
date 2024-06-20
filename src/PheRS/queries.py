@@ -174,51 +174,65 @@ def all_demo_query(cdr):
     """
 
     demo_query: str = f"""
-        SELECT 
-            demos.person_id, 
-            demos.sex, 
-            demos.dob, 
-            ages.first_date, 
-            ages.last_date,
-            ROUND(DATE_DIFF(ages.first_date, demos.dob, DAY) / 365.25) AS first_age,
-            ROUND(DATE_DIFF(ages.last_date, demos.dob, DAY) / 365.25) AS last_age
-        FROM 
-            (
-                SELECT 
-                    icds.person_id, 
-                    MIN(icds.entry_date) AS first_date, 
-                    MAX(icds.entry_date) AS last_date
-                FROM 
-                    (
-                        SELECT DISTINCT
-                            p.person_id, 
-                            DATE(e.condition_start_date) AS entry_date
-                        FROM 
-                            {cdr}.condition_occurrence e
-                        JOIN 
-                            {cdr}.person p ON p.person_id = e.person_id
-                        JOIN 
-                            {cdr}.concept co ON co.concept_id = e.condition_source_concept_id
-                        WHERE 
-                            co.vocabulary_id IN ('ICD9CM', 'ICD10CM')
-                        GROUP BY 
-                            p.person_id, e.condition_start_date
-                    ) AS icds
-                GROUP BY 
-                    icds.person_id
-            ) AS ages
-        JOIN 
-            (
-                SELECT 
-                    person_id, 
-                    c1.concept_name AS sex, 
-                    DATE(birth_datetime) AS dob 
-                FROM 
-                    {cdr}.person p1
-                JOIN 
-                    {cdr}.concept c1 ON c1.concept_id = p1.sex_at_birth_concept_id
-            ) AS demos ON ages.person_id = demos.person_id;
-       
-        """
+            SELECT 
+                demos.person_id, 
+                demos.sex, 
+                demos.dob, 
+                ages.first_date, 
+                ages.last_date,
+                ROUND(DATE_DIFF(ages.first_date, demos.dob, DAY) / 365.25) AS first_age,
+                ROUND(DATE_DIFF(ages.last_date, demos.dob, DAY) / 365.25) AS last_age
+            FROM 
+                (
+                    SELECT 
+                        icds_obs.person_id, 
+                        MIN(icds_obs.entry_date) AS first_date, 
+                        MAX(icds_obs.entry_date) AS last_date
+                    FROM 
+                        (
+                            SELECT DISTINCT
+                                p.person_id, 
+                                DATE(e.condition_start_date) AS entry_date
+                            FROM 
+                                {cdr}.condition_occurrence e
+                            JOIN 
+                                {cdr}.person p ON p.person_id = e.person_id
+                            JOIN 
+                                {cdr}.concept co ON co.concept_id = e.condition_source_concept_id
+                            WHERE 
+                                co.vocabulary_id IN ('ICD9CM', 'ICD10CM')
+                            GROUP BY 
+                                p.person_id, e.condition_start_date
 
+                            UNION ALL
+
+                            SELECT DISTINCT
+                                p.person_id, 
+                                DATE(o.observation_date) AS entry_date
+                            FROM 
+                                {cdr}.observation o
+                            JOIN 
+                                {cdr}.person p ON p.person_id = o.person_id
+                            JOIN 
+                                {cdr}.concept co ON co.concept_id = o.observation_source_concept_id
+                            WHERE 
+                                co.vocabulary_id IN ('ICD9CM', 'ICD10CM')
+                            GROUP BY 
+                                p.person_id, o.observation_date
+                        ) AS icds_obs
+                    GROUP BY 
+                        icds_obs.person_id
+                ) AS ages
+            JOIN 
+                (
+                    SELECT 
+                        person_id, 
+                        c1.concept_name AS sex, 
+                        DATE(birth_datetime) AS dob 
+                    FROM 
+                        {cdr}.person p1
+                    JOIN 
+                        {cdr}.concept c1 ON c1.concept_id = p1.sex_at_birth_concept_id
+                ) AS demos ON ages.person_id = demos.person_id;
+        """
     return demo_query

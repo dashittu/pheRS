@@ -118,7 +118,7 @@ def all_icd_query(cdr):
                 v_icds.occurrence_age
             FROM
                 (
-                    SELECT
+                    SELECT DISTINCT
                         *
                     FROM
                         ({icd_query}) AS icd_events

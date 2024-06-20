@@ -70,7 +70,7 @@ def all_icd_query(cdr):
                 c.concept_code AS ICD,
                 o.observation_concept_id AS concept_id,
                 DATE(p.birth_datetime) AS dob,
-                DATE_DIFF(o.observation_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
+                ROUND(DATE_DIFF(o.observation_date, DATE(p.birth_datetime), DAY) / 365.25) AS occurrence_age
             FROM
                 {cdr}.observation AS o
             INNER JOIN
@@ -93,7 +93,7 @@ def all_icd_query(cdr):
                 c.concept_code AS ICD,
                 o.observation_concept_id AS concept_id,
                 DATE(p.birth_datetime) AS dob,
-                DATE_DIFF(o.observation_date, DATE(p.birth_datetime), DAY) / 365.25 AS occurrence_age
+                ROUND(DATE_DIFF(o.observation_date, DATE(p.birth_datetime), DAY) / 365.25) AS occurrence_age
             FROM
                 {cdr}.observation AS o
             INNER JOIN

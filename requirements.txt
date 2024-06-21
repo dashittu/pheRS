@@ -1,8 +1,11 @@
 google-cloud-bigquery
-lifelines
-numpy
+lifelines~=0.28.0
+numpy~=1.26.4
 pandas
 polars<=0.20.26
 pyarrow
-statsmodels
+statsmodels~=0.14.2
 setuptools
+google~=3.0.0
+tqdm~=4.66.4
+patsy~=0.5.6

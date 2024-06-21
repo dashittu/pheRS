@@ -1,5 +1,7 @@
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
+from datetime import datetime
 
 import polars as pl
 import numpy as np
@@ -35,7 +37,11 @@ class Weights:
 
         print("\033[1mDone!")
 
-    def get_weights_prevalence(self, phecode_occurrences_path=None, negative_weights=False, output_file_name=None):
+    def get_weights_prevalence(self, phecode_occurrences_path=None, negative_weights=False, n_jobs=1,
+                               output_file_name=None):
+        start_time = datetime.now()
+        print(f"Prevalence weights calculation started at: {start_time}")
+
         if phecode_occurrences_path is None:
             print("phecode_occurrences path is required to calculate weights.")
             sys.exit(0)
@@ -51,29 +57,47 @@ class Weights:
         # Prepare a dataframe with all combinations of person_id and phecode
         all_combinations = demos.select(['person_id']).join(phecode_counts, how='cross')
 
-        # Merge to get dx_status
-        phecode_occurrences = phecode_occurrences.with_columns(pl.lit(1).alias('dx_status'))
-        w_big = all_combinations.join(phecode_occurrences, on=['person_id', 'phecode'], how='left').fill_null(0)
+        # Function to process each phecode
+        def weight_prevalence(phe):
+            phe_occurrences = phecode_occurrences.filter(pl.col('phecode') == phe).with_columns(
+                pl.lit(1).alias('dx_status'))
+            w_big = all_combinations.join(phe_occurrences, on=['person_id', 'phecode'], how='left').fill_null(0)
+            weights = w_big.join(phecode_counts.filter(pl.col('phecode') == phe).select(['phecode', 'pred']),
+                                 on='phecode', how='left')
+            weights = weights.with_columns(((1 - 2 * weights['dx_status']) * np.log10(
+                weights['dx_status'] * weights['pred'] + (1 - weights['dx_status']) * (1 - weights['pred']))).alias(
+                'w'))
+            if not negative_weights:
+                weights = weights.with_columns((weights['dx_status'] * weights['w']).alias('w'))
+                weights = weights.with_columns(pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
+            return weights.select(['person_id', 'phecode', 'pred', 'w']).unique()
 
-        # Merge to get prevalence
-        weights = w_big.join(phecode_counts.select(['phecode', 'pred']), on='phecode', how='left')
+        unique_phecodes = phecode_occurrences['phecode'].unique()
+        weights_dfs = []
 
-        # Calculate weights
-        weights = weights.with_columns(((1 - 2 * weights['dx_status']) * np.log10(
-            weights['dx_status'] * weights['pred'] + (1 - weights['dx_status']) * (1 - weights['pred']))).alias('w'))
-        if not negative_weights:
-            weights = weights.with_columns((weights['dx_status'] * weights['w']).alias('w'))
-            weights = weights.with_columns(pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
+        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+            futures = [executor.submit(weight_prevalence, phe) for phe in unique_phecodes]
+            for future in tqdm(as_completed(futures), total=len(unique_phecodes), desc="Prevalence Calculation"):
+                weight_result = future.result()
+                if weight_result is not None:
+                    weights_dfs.append(weight_result)
 
-        # Reorder columns
-        weights = weights.select(['person_id', 'phecode', 'pred', 'w']).unique()
+        weights = pl.concat(weights_dfs)
         weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
 
         # Report result
         utils.report_result(weights, placeholder='weights_prevalence', output_file_name=output_file_name)
 
+        end_time = datetime.now()
+        print(f"Prevalence weights calculation completed at: {end_time}")
+        duration = end_time - start_time
+        print(f"Total duration: {duration}")
+
     def get_weights_logistic(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False,
                              n_jobs=1, output_file_name=None):
+        start_time = datetime.now()
+        print(f"Logistic weights calculation started at: {start_time}")
+
         if phecode_occurrences_path is None and method_formula is None:
             print("Both phecode_occurrences path and method_formula are required to calculate weights.")
             sys.exit(0)
@@ -105,7 +129,7 @@ class Weights:
 
         with ThreadPoolExecutor(max_workers=n_jobs) as executor:
             futures = [executor.submit(logistic_regression, phe) for phe in unique_phecodes]
-            for future in as_completed(futures):
+            for future in tqdm(as_completed(futures), total=len(unique_phecodes), desc="Logistic Regression"):
                 weight_result = future.result()
                 if weight_result is not None:
                     weights_dfs.append(weight_result)
@@ -116,8 +140,16 @@ class Weights:
         # Report result
         utils.report_result(weights, placeholder='weights_logistic', output_file_name=output_file_name)
 
+        end_time = datetime.now()
+        print(f"Logistic weights calculation completed at: {end_time}")
+        duration = end_time - start_time
+        print(f"Total duration: {duration}")
+
     def get_weights_loglinear(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False,
                               n_jobs=1, output_file_name=None):
+        start_time = datetime.now()
+        print(f"Loglinear weights calculation started at: {start_time}")
+
         if phecode_occurrences_path is None and method_formula is None:
             print("Both phecode_occurrences path and method_formula are required to calculate weights.")
             sys.exit(0)
@@ -150,7 +182,7 @@ class Weights:
 
         with ThreadPoolExecutor(max_workers=n_jobs) as executor:
             futures = [executor.submit(linear_regression, phe) for phe in unique_phecodes]
-            for future in as_completed(futures):
+            for future in tqdm(as_completed(futures), total=len(unique_phecodes), desc="Linear Regression"):
                 weight_result = future.result()
                 if weight_result is not None:
                     weights_dfs.append(weight_result)
@@ -161,8 +193,16 @@ class Weights:
         # Report result
         utils.report_result(weights, placeholder='weights_linear', output_file_name=output_file_name)
 
+        end_time = datetime.now()
+        print(f"Loglinear weights calculation completed at: {end_time}")
+        duration = end_time - start_time
+        print(f"Total duration: {duration}")
+
     def get_weights_cox(self, phecode_occurrences_path=None, method_formula=None, negative_weights=False, n_jobs=1,
                         output_file_name=None):
+        start_time = datetime.now()
+        print(f"Cox weights calculation started at: {start_time}")
+
         if phecode_occurrences_path is None:
             print("phecode_occurrences path is required to calculate weights.")
             sys.exit(0)
@@ -214,7 +254,7 @@ class Weights:
 
         with ThreadPoolExecutor(max_workers=n_jobs) as executor:
             futures = [executor.submit(cox_regression, phe) for phe in unique_phecodes]
-            for future in as_completed(futures):
+            for future in tqdm(as_completed(futures), total=len(unique_phecodes), desc="Cox Regression"):
                 weight_result = future.result()
                 if weight_result is not None:
                     weights_dfs.append(weight_result)
@@ -224,6 +264,11 @@ class Weights:
 
         # Report result
         utils.report_result(weights, placeholder='weights_cox', output_file_name=output_file_name)
+
+        end_time = datetime.now()
+        print(f"Cox weights calculation completed at: {end_time}")
+        duration = end_time - start_time
+        print(f"Total duration: {duration}")
 
     def get_weights(self, phecode_occurrences_path=None, method='prevalence', method_formula=None,
                     negative_weights=False, n_jobs=1, output_file_name=None):
@@ -242,7 +287,8 @@ class Weights:
             sys.exit(0)
 
         if method == 'prevalence':
-            self.get_weights_prevalence(phecode_occurrences_path, negative_weights, output_file_name=output_file_name)
+            self.get_weights_prevalence(phecode_occurrences_path, negative_weights, n_jobs,
+                                        output_file_name=output_file_name)
 
         if method == 'logistic':
             if method_formula is None:

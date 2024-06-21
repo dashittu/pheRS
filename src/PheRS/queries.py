@@ -233,6 +233,6 @@ def all_demo_query(cdr):
                         {cdr}.person p1
                     JOIN 
                         {cdr}.concept c1 ON c1.concept_id = p1.sex_at_birth_concept_id
-                ) AS demos ON ages.person_id = demos.person_id;
+                ) AS demos ON ages.person_id = demos.person_id
         """
     return demo_query

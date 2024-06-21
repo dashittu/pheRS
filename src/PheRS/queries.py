@@ -198,9 +198,25 @@ def all_demo_query(cdr):
                             JOIN 
                                 {cdr}.person p ON p.person_id = e.person_id
                             JOIN 
+                                {cdr}.concept co ON co.concept_code = e.condition_source_value
+                            WHERE 
+                                co.vocabulary_id IN ('ICD9', 'ICD9CM', 'ICD10', 'ICD10CM')
+                            GROUP BY 
+                                p.person_id, e.condition_start_date
+
+                            UNION ALL
+
+                            SELECT DISTINCT
+                                p.person_id, 
+                                DATE(e.condition_start_date) AS entry_date
+                            FROM 
+                                {cdr}.condition_occurrence e
+                            JOIN 
+                                {cdr}.person p ON p.person_id = e.person_id
+                            JOIN 
                                 {cdr}.concept co ON co.concept_id = e.condition_source_concept_id
                             WHERE 
-                                co.vocabulary_id IN ('ICD9CM', 'ICD10CM')
+                                co.vocabulary_id IN ('ICD9', 'ICD9CM', 'ICD10', 'ICD10CM')
                             GROUP BY 
                                 p.person_id, e.condition_start_date
 
@@ -214,9 +230,25 @@ def all_demo_query(cdr):
                             JOIN 
                                 {cdr}.person p ON p.person_id = o.person_id
                             JOIN 
+                                {cdr}.concept co ON co.concept_code = o.observation_source_value
+                            WHERE 
+                                co.vocabulary_id IN ('ICD9', 'ICD9CM', 'ICD10', 'ICD10CM')
+                            GROUP BY 
+                                p.person_id, o.observation_date
+                            
+                            UNION ALL
+
+                            SELECT DISTINCT
+                                p.person_id, 
+                                DATE(o.observation_date) AS entry_date
+                            FROM 
+                                {cdr}.observation o
+                            JOIN 
+                                {cdr}.person p ON p.person_id = o.person_id
+                            JOIN 
                                 {cdr}.concept co ON co.concept_id = o.observation_source_concept_id
                             WHERE 
-                                co.vocabulary_id IN ('ICD9CM', 'ICD10CM')
+                                co.vocabulary_id IN ('ICD9', 'ICD9CM', 'ICD10', 'ICD10CM')
                             GROUP BY 
                                 p.person_id, o.observation_date
                         ) AS icds_obs

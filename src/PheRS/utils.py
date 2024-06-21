@@ -40,7 +40,7 @@ def get_allofus_demo():
     """
     cdr = os.getenv("WORKSPACE_CDR")
     demo_query = queries.all_demo_query(cdr)
-    print("\033[1mStart querying ICD codes...")
+    print("\033[1mStart querying demographic data...")
     demo = polars_gbq(demo_query)
     return demo
 
@@ -497,5 +497,5 @@ def report_result(result, placeholder, output_file_name):
               f"\033[1mSaved to {file_name}!\033[0m")
         print()
     else:
-        print("\033[1mNo phecode occurrences generated. Check your input data.\033[0m")
+        print(f"\033[1mNo {placeholder} generated. Check your input data.\033[0m")
         print()

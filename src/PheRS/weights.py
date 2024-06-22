@@ -83,6 +83,7 @@ class Weights:
                     weights_dfs.append(weight_result)
 
         weights = pl.concat(weights_dfs)
+        weights = weights.unique(subset=['person_id', 'phecode'])
         weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
 
         # Report result
@@ -135,6 +136,7 @@ class Weights:
                     weights_dfs.append(weight_result)
 
         weights = pl.concat(weights_dfs)
+        weights = weights.unique(subset=['person_id', 'phecode'])
         weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
 
         # Report result
@@ -188,6 +190,7 @@ class Weights:
                     weights_dfs.append(weight_result)
 
         weights = pl.concat(weights_dfs)
+        weights = weights.unique(subset=['person_id', 'phecode'])
         weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
 
         # Report result
@@ -260,6 +263,7 @@ class Weights:
                     weights_dfs.append(weight_result)
 
         weights = pl.concat(weights_dfs)
+        weights = weights.unique(subset=['person_id', 'phecode'])
         weights = weights.with_columns(weights["phecode"].cast(pl.Utf8))
 
         # Report result

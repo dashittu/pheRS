@@ -67,7 +67,7 @@ def get_phecode_mapping(phecode_version, icd_version, phecode_map_file_path, kee
                 print("Please provide phecode_map_path for custom icd_version")
                 sys.exit(0)
         else:
-            print("Invalid icd_version. Available icd_version values are US, WHO and custom.")
+            print("Invalid icd_version. Available icd_version values are US and custom.")
             sys.exit(0)
         if phecode_map_file_path is None:
             final_file_path = os.path.join(final_file_path, path_suffix)

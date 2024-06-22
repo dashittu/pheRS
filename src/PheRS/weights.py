@@ -1,7 +1,9 @@
 import sys
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from datetime import datetime
+import warnings
 
 import polars as pl
 import numpy as np
@@ -20,8 +22,11 @@ class Weights:
     A class to calculate weights for phenotype risk scores.
     """
 
-    def __init__(self, platform="aou", demo_df_path=None):
+    def __init__(self, platform="aou", demo_df_path=None, suppress_warnings=True):
         self.platform = platform
+        self.suppress_warnings = suppress_warnings
+        self.n_threads = round(os.cpu_count() * 2 / 3)
+
         if platform == "aou":
             self.demos = utils.get_allofus_demo()
         elif platform == "custom":
@@ -75,10 +80,16 @@ class Weights:
         unique_phecodes = phecode_occurrences['phecode'].unique()
         weights_dfs = []
 
-        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+        with ThreadPoolExecutor(max_workers=self.n_threads) as executor:
             futures = [executor.submit(weight_prevalence, phe) for phe in unique_phecodes]
             for future in tqdm(as_completed(futures), total=len(unique_phecodes), desc="Prevalence Calculation"):
-                weight_result = future.result()
+                if self.suppress_warnings:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        weight_result = future.result()
+                else:
+                    weight_result = future.result()
+
                 if weight_result is not None:
                     weights_dfs.append(weight_result)
 
@@ -128,10 +139,16 @@ class Weights:
         unique_phecodes = phecode_occurrences['phecode'].unique()
         weights_dfs = []
 
-        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+        with ThreadPoolExecutor(max_workers=self.n_threads) as executor:
             futures = [executor.submit(logistic_regression, phe) for phe in unique_phecodes]
             for future in tqdm(as_completed(futures), total=len(unique_phecodes), desc="Logistic Regression"):
-                weight_result = future.result()
+                if self.suppress_warnings:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        weight_result = future.result()
+                else:
+                    weight_result = future.result()
+
                 if weight_result is not None:
                     weights_dfs.append(weight_result)
 
@@ -182,10 +199,16 @@ class Weights:
         unique_phecodes = phecode_occurrences['phecode'].unique()
         weights_dfs = []
 
-        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+        with ThreadPoolExecutor(max_workers=self.n_threads) as executor:
             futures = [executor.submit(linear_regression, phe) for phe in unique_phecodes]
             for future in tqdm(as_completed(futures), total=len(unique_phecodes), desc="Linear Regression"):
-                weight_result = future.result()
+                if self.suppress_warnings:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        weight_result = future.result()
+                else:
+                    weight_result = future.result()
+
                 if weight_result is not None:
                     weights_dfs.append(weight_result)
 
@@ -255,10 +278,16 @@ class Weights:
         unique_phecodes = phecode_occurrences['phecode'].unique()
         weights_dfs = []
 
-        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+        with ThreadPoolExecutor(max_workers=self.n_threads) as executor:
             futures = [executor.submit(cox_regression, phe) for phe in unique_phecodes]
             for future in tqdm(as_completed(futures), total=len(unique_phecodes), desc="Cox Regression"):
-                weight_result = future.result()
+                if self.suppress_warnings:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        weight_result = future.result()
+                else:
+                    weight_result = future.result()
+
                 if weight_result is not None:
                     weights_dfs.append(weight_result)
 

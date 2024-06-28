@@ -1,5 +1,5 @@
 # PheRS: Phenotype Risk Scores Calculation
-**PheRS** is a Python package for calculating phenotype 
+'PheRS' is a Python package for calculating phenotype 
 risk scores using various statistical methods. 
 It leverages the All of Us OMOP database and supports 
 custom datasets. The package provides functionality for 

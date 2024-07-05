@@ -412,7 +412,7 @@ def check_disease_phecode_map(disease_phecode_map):
         raise ValueError("Column 'phecode' must contain strings")
 
     # Check for duplicates based on 'disease_id' and 'phecode'
-    duplicates = disease_phecode_map.groupby(['disease_id', 'phecode']).count()
+    duplicates = disease_phecode_map.group_by(['disease_id', 'phecode']).agg(pl.count().alias('count'))
 
     if (duplicates['count'] > 1).any():
         raise ValueError("Duplicates found based on 'disease_id' and 'phecode'")

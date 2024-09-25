@@ -110,7 +110,7 @@ class Weights:
         start_time = datetime.now()
         print(f"Logistic weights calculation started at: {start_time}")
 
-        if phecode_occurrences_path is None and method_formula is None:
+        if phecode_occurrences_path is None or method_formula is None:
             print("Both phecode_occurrences path and method_formula are required to calculate weights.")
             sys.exit(0)
 
@@ -169,7 +169,7 @@ class Weights:
         start_time = datetime.now()
         print(f"Loglinear weights calculation started at: {start_time}")
 
-        if phecode_occurrences_path is None and method_formula is None:
+        if phecode_occurrences_path is None or method_formula is None:
             print("Both phecode_occurrences path and method_formula are required to calculate weights.")
             sys.exit(0)
 

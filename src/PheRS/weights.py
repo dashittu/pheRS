@@ -13,8 +13,9 @@ from statsmodels.genmod.families import Binomial
 from lifelines import CoxPHFitter
 
 from patsy import EvalEnvironment
-# noinspection PyUnresolvedReferences,PyProtectedMember
+# noinspection PyUnresolvedReferences, PyProtectedMember
 from pheRS.src.PheRS import utils
+from multiprocessing import Pool
 
 
 class Weights:
@@ -42,7 +43,7 @@ class Weights:
 
         print("\033[1mDone!")
 
-    def get_weights_prevalence(self, phecode_occurrences_path=None, negative_weights=False, n_jobs=1, 
+    def get_weights_prevalence(self, phecode_occurrences_path=None, negative_weights=False, n_jobs=1,
                                output_file_name=None, chunk_size=1000):
         start_time = datetime.now()
         print(f"Prevalence weights calculation started at: {start_time}")
@@ -59,48 +60,40 @@ class Weights:
             {'person_id': 'count'})
         phecode_counts = phecode_counts.with_columns((phecode_counts['count'] / len(demos)).alias('pred'))
 
-        # Process data in chunks
-        num_chunks = len(demos) // chunk_size + 1
+        unique_phecodes = phecode_counts['phecode'].to_list()
         weights_dfs = []
 
-        def weight_prevalence_chunk(chunk_index):
-            demo_chunk = demos.slice(chunk_index * chunk_size, chunk_size)
-            all_combinations_chunk = demo_chunk.select(['person_id']).join(phecode_counts, how='cross')
+        def weight_prevalence(phe):
+            phe_occurrences = phecode_occurrences.filter(pl.col('phecode') == phe)
+            persons_with_phe = phe_occurrences['person_id'].unique()
+            demo_persons = demos.filter(~pl.col('person_id').is_in(persons_with_phe))
 
-            def weight_prevalence(phe):
-                phe_occurrences = phecode_occurrences.filter(pl.col('phecode') == phe).with_columns(
-                    pl.lit(1).alias('dx_status'))
-                w_big = all_combinations_chunk.join(phe_occurrences, on=['person_id', 'phecode'], how='left').fill_null(0)
-                weights = w_big.join(phecode_counts.filter(pl.col('phecode') == phe).select(['phecode', 'pred']),
-                                     on='phecode', how='left')
-                weights = weights.with_columns(((1 - 2 * weights['dx_status']) * np.log10(
-                    weights['dx_status'] * weights['pred'] + (1 - weights['dx_status']) * (1 - weights['pred']))).alias(
-                    'w'))
-                if not negative_weights:
-                    weights = weights.with_columns((weights['dx_status'] * weights['w']).alias('w'))
-                    weights = weights.with_columns(pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
-                return weights.select(['person_id', 'phecode', 'pred', 'w']).unique()
+            # Create dx_status column
+            phe_occurrences = phe_occurrences.with_columns(pl.lit(1).alias('dx_status'))
+            demo_persons = demo_persons.select('person_id').with_columns(pl.lit(0).alias('dx_status'))
 
-            unique_phecodes = phecode_occurrences['phecode'].unique()
-            chunk_weights_dfs = []
-            with ThreadPoolExecutor(max_workers=self.n_threads) as executor:
-                futures = [executor.submit(weight_prevalence, phe) for phe in unique_phecodes]
-                for future in tqdm(as_completed(futures), total=len(unique_phecodes), desc=f"Chunk {chunk_index} Prevalence Calculation"):
-                    if self.suppress_warnings:
-                        with warnings.catch_warnings():
-                            warnings.simplefilter("ignore")
-                            weight_result = future.result()
-                    else:
-                        weight_result = future.result()
-                    if weight_result is not None:
-                        chunk_weights_dfs.append(weight_result)
+            # Combine the data
+            weights = pl.concat([phe_occurrences.select(['person_id', 'dx_status']), demo_persons])
+            weights = weights.with_columns(pl.lit(phe).alias('phecode'))
+            weights = weights.join(phecode_counts.filter(pl.col('phecode') == phe).select(['phecode', 'pred']), on='phecode')
 
-            return chunk_weights_dfs
+            # Compute the expression safely
+            expr = weights['dx_status'] * weights['pred'] + (1 - weights['dx_status']) * (1 - weights['pred'])
+            expr = expr.clip(lower=1e-10)  # Avoid zero or negative values
 
-        for chunk_index in range(num_chunks):
-            print(f"Processing chunk {chunk_index + 1} out of {num_chunks}")
-            chunk_weights_dfs = weight_prevalence_chunk(chunk_index)
-            weights_dfs.extend(chunk_weights_dfs)
+            weights = weights.with_columns(((1 - 2 * weights['dx_status']) * np.log10(expr)).alias('w'))
+
+            if not negative_weights:
+                weights = weights.with_columns((weights['dx_status'] * weights['w']).alias('w'))
+                weights = weights.with_columns(pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
+
+            return weights.select(['person_id', 'phecode', 'pred', 'w']).unique()
+
+        # Use multiprocessing if suitable
+        with Pool(processes=n_jobs) as pool:
+            for weight_result in tqdm(pool.imap_unordered(weight_prevalence, unique_phecodes), total=len(unique_phecodes), desc="Prevalence Calculation"):
+                if weight_result is not None:
+                    weights_dfs.append(weight_result)
 
         weights = pl.concat(weights_dfs)
         weights = weights.unique(subset=['person_id', 'phecode'])
@@ -349,26 +342,26 @@ class Weights:
         print(f"Total duration: {duration}")
 
     def get_weights(self, phecode_occurrences_path=None, method='prevalence', method_formula=None,
-                negative_weights=False, n_jobs=1, output_file_name=None, chunk_size=1000):
+                    negative_weights=False, n_jobs=1, output_file_name=None, chunk_size=1000):
         if phecode_occurrences_path is None:
             print("phecode_occurrences path is required to calculate weights.")
             sys.exit(0)
-    
+
         phecode_occurrences = pl.read_csv(phecode_occurrences_path)
         phecode_occurrences = phecode_occurrences.with_columns(phecode_occurrences['phecode'].cast(pl.Utf8))
         demos = self.demos.clone()
-    
+
         utils.check_demos(demos, method)
         utils.check_phecode_occurrences(phecode_occurrences, demos, method)
         if not isinstance(negative_weights, bool):
             print('"negative_weights" must be True or False.')
             sys.exit(0)
-    
+
         # Add chunk_size to the method calls
         if method == 'prevalence':
             self.get_weights_prevalence(phecode_occurrences_path, negative_weights, n_jobs, 
                                         output_file_name, chunk_size)
-    
+
         elif method == 'logistic':
             if method_formula is None:
                 print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
@@ -376,7 +369,7 @@ class Weights:
             utils.check_method_formula(method_formula, demos)
             self.get_weights_logistic(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
                                       output_file_name, chunk_size)
-    
+
         elif method == 'loglinear':
             if method_formula is None:
                 print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
@@ -384,7 +377,7 @@ class Weights:
             utils.check_method_formula(method_formula, demos)
             self.get_weights_loglinear(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
                                        output_file_name, chunk_size)
-    
+
         elif method == 'cox':
             self.get_weights_cox(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
                                  output_file_name, chunk_size)

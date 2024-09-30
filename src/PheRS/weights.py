@@ -350,41 +350,41 @@ class Weights:
 
     def get_weights(self, phecode_occurrences_path=None, method='prevalence', method_formula=None,
                 negative_weights=False, n_jobs=1, output_file_name=None, chunk_size=1000):
-    if phecode_occurrences_path is None:
-        print("phecode_occurrences path is required to calculate weights.")
-        sys.exit(0)
-
-    phecode_occurrences = pl.read_csv(phecode_occurrences_path)
-    phecode_occurrences = phecode_occurrences.with_columns(phecode_occurrences['phecode'].cast(pl.Utf8))
-    demos = self.demos.clone()
-
-    utils.check_demos(demos, method)
-    utils.check_phecode_occurrences(phecode_occurrences, demos, method)
-    if not isinstance(negative_weights, bool):
-        print('"negative_weights" must be True or False.')
-        sys.exit(0)
-
-    # Add chunk_size to the method calls
-    if method == 'prevalence':
-        self.get_weights_prevalence(phecode_occurrences_path, negative_weights, n_jobs, 
-                                    output_file_name, chunk_size)
-
-    elif method == 'logistic':
-        if method_formula is None:
-            print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
+        if phecode_occurrences_path is None:
+            print("phecode_occurrences path is required to calculate weights.")
             sys.exit(0)
-        utils.check_method_formula(method_formula, demos)
-        self.get_weights_logistic(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
-                                  output_file_name, chunk_size)
-
-    elif method == 'loglinear':
-        if method_formula is None:
-            print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
+    
+        phecode_occurrences = pl.read_csv(phecode_occurrences_path)
+        phecode_occurrences = phecode_occurrences.with_columns(phecode_occurrences['phecode'].cast(pl.Utf8))
+        demos = self.demos.clone()
+    
+        utils.check_demos(demos, method)
+        utils.check_phecode_occurrences(phecode_occurrences, demos, method)
+        if not isinstance(negative_weights, bool):
+            print('"negative_weights" must be True or False.')
             sys.exit(0)
-        utils.check_method_formula(method_formula, demos)
-        self.get_weights_loglinear(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
-                                   output_file_name, chunk_size)
-
-    elif method == 'cox':
-        self.get_weights_cox(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
-                             output_file_name, chunk_size)
+    
+        # Add chunk_size to the method calls
+        if method == 'prevalence':
+            self.get_weights_prevalence(phecode_occurrences_path, negative_weights, n_jobs, 
+                                        output_file_name, chunk_size)
+    
+        elif method == 'logistic':
+            if method_formula is None:
+                print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
+                sys.exit(0)
+            utils.check_method_formula(method_formula, demos)
+            self.get_weights_logistic(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
+                                      output_file_name, chunk_size)
+    
+        elif method == 'loglinear':
+            if method_formula is None:
+                print("method_formula cannot be \"None\". Required to implement \"check_method_formula\" function .")
+                sys.exit(0)
+            utils.check_method_formula(method_formula, demos)
+            self.get_weights_loglinear(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
+                                       output_file_name, chunk_size)
+    
+        elif method == 'cox':
+            self.get_weights_cox(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
+                                 output_file_name, chunk_size)

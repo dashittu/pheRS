@@ -43,6 +43,35 @@ class Weights:
 
         print("\033[1mDone!")
 
+    def weight_prevalence(self, phe, phecode_occurrences, demos, phecode_counts, negative_weights):
+        """
+        Calculate weights for a single phecode.
+        """
+        phe_occurrences = phecode_occurrences.filter(pl.col('phecode') == phe)
+        persons_with_phe = phe_occurrences['person_id'].unique()
+        demo_persons = demos.filter(~pl.col('person_id').is_in(persons_with_phe))
+
+        # Create dx_status column
+        phe_occurrences = phe_occurrences.with_columns(pl.lit(1).alias('dx_status'))
+        demo_persons = demo_persons.select('person_id').with_columns(pl.lit(0).alias('dx_status'))
+
+        # Combine the data
+        weights = pl.concat([phe_occurrences.select(['person_id', 'dx_status']), demo_persons])
+        weights = weights.with_columns(pl.lit(phe).alias('phecode'))
+        weights = weights.join(phecode_counts.filter(pl.col('phecode') == phe).select(['phecode', 'pred']), on='phecode')
+
+        # Compute the expression safely
+        expr = weights['dx_status'] * weights['pred'] + (1 - weights['dx_status']) * (1 - weights['pred'])
+        expr = expr.clip(lower=1e-10)  # Avoid zero or negative values
+
+        weights = weights.with_columns(((1 - 2 * weights['dx_status']) * np.log10(expr)).alias('w'))
+
+        if not negative_weights:
+            weights = weights.with_columns((weights['dx_status'] * weights['w']).alias('w'))
+            weights = weights.with_columns(pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
+
+        return weights.select(['person_id', 'phecode', 'pred', 'w']).unique()
+
     def get_weights_prevalence(self, phecode_occurrences_path=None, negative_weights=False, n_jobs=1,
                                output_file_name=None, chunk_size=1000):
         start_time = datetime.now()
@@ -63,35 +92,11 @@ class Weights:
         unique_phecodes = phecode_counts['phecode'].to_list()
         weights_dfs = []
 
-        def weight_prevalence(phe):
-            phe_occurrences = phecode_occurrences.filter(pl.col('phecode') == phe)
-            persons_with_phe = phe_occurrences['person_id'].unique()
-            demo_persons = demos.filter(~pl.col('person_id').is_in(persons_with_phe))
+        # Use multiprocessing
+        args = [(phe, phecode_occurrences, demos, phecode_counts, negative_weights) for phe in unique_phecodes]
 
-            # Create dx_status column
-            phe_occurrences = phe_occurrences.with_columns(pl.lit(1).alias('dx_status'))
-            demo_persons = demo_persons.select('person_id').with_columns(pl.lit(0).alias('dx_status'))
-
-            # Combine the data
-            weights = pl.concat([phe_occurrences.select(['person_id', 'dx_status']), demo_persons])
-            weights = weights.with_columns(pl.lit(phe).alias('phecode'))
-            weights = weights.join(phecode_counts.filter(pl.col('phecode') == phe).select(['phecode', 'pred']), on='phecode')
-
-            # Compute the expression safely
-            expr = weights['dx_status'] * weights['pred'] + (1 - weights['dx_status']) * (1 - weights['pred'])
-            expr = expr.clip(lower=1e-10)  # Avoid zero or negative values
-
-            weights = weights.with_columns(((1 - 2 * weights['dx_status']) * np.log10(expr)).alias('w'))
-
-            if not negative_weights:
-                weights = weights.with_columns((weights['dx_status'] * weights['w']).alias('w'))
-                weights = weights.with_columns(pl.when(pl.col('w') == -0.0).then(0.0).otherwise(pl.col('w')).alias('w'))
-
-            return weights.select(['person_id', 'phecode', 'pred', 'w']).unique()
-
-        # Use multiprocessing if suitable
         with Pool(processes=n_jobs) as pool:
-            for weight_result in tqdm(pool.imap_unordered(weight_prevalence, unique_phecodes), total=len(unique_phecodes), desc="Prevalence Calculation"):
+            for weight_result in tqdm(pool.starmap(self.weight_prevalence, args), total=len(unique_phecodes), desc="Prevalence Calculation"):
                 if weight_result is not None:
                     weights_dfs.append(weight_result)
 
@@ -381,3 +386,4 @@ class Weights:
         elif method == 'cox':
             self.get_weights_cox(phecode_occurrences_path, method_formula, negative_weights, n_jobs, 
                                  output_file_name, chunk_size)
+

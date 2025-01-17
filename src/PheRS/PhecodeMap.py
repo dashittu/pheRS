@@ -35,7 +35,7 @@ class PhecodeMap:
             if icd_df_path is not None:
                 print("\033[1mLoading user's ICD data from file...")
                 self.icd_events = pl.read_csv(icd_df_path,
-                                              dtypes={"ICD": str})
+                                              schema_overrides={"ICD": str})
             else:
                 print("icd_df_path is required for custom platform.")
                 sys.exit(0)
@@ -62,7 +62,8 @@ class PhecodeMap:
         print("\033[1mDone!")
 
     def get_phecode_occurrences(self, phecode_map_file_path=None, dx_icd=None,
-                                phecode_version="1.2", icd_version="US", include_occurrence_age=False,
+                                phecode_version="X", icd_version="US", include_occurrence_age=False,
+                                phecode_of_interest_path=None, disease_id=None, disease_phecode_map=None,
                                 output_file_name=None):
         """
         Maps ICD occurrences to phecodes by merging ICD occurrence data with a mapping table.
@@ -81,6 +82,11 @@ class PhecodeMap:
         - A polars.DataFrame with columns 'person_id' and 'phecode', representing the occurrence of phecodes per person.
         """
 
+        # One of disease_id or phecode_of_interest_path must be provided
+        if disease_id is None and phecode_of_interest_path is None:
+            print("Either disease_id or phecode_of_interest_path must be provided. Both cannot be None.")
+            sys.exit(0)
+
         # load phecode mapping file by version or by custom path
         # noinspection PyGlobalUndefined
         # global icd_occurrences
@@ -90,6 +96,43 @@ class PhecodeMap:
             phecode_map_file_path=phecode_map_file_path,
             keep_all_columns=False
         )
+
+        if phecode_of_interest_path is not None:
+            print(f"\033[1mFiltering icd_phecode_map by phecodes from {phecode_of_interest_path}...")
+            phecode_filter_df = pl.read_csv(
+                phecode_of_interest_path,
+                schema_overrides={"phecode": str}
+            )
+
+            icd_phecode_map = icd_phecode_map.join(
+                phecode_filter_df.select(["phecode", "flag"]).unique(),
+                on=["phecode", "flag"],
+                how="inner"
+            )
+            print(f"\033[1mDone filtering. Remaining rows in icd_phecode_map: {icd_phecode_map.height}")
+
+        
+        elif disease_id is not None:
+            if not disease_phecode_map:
+                print("A disease_phecode_map must be provided if disease_id is given.")
+                sys.exit(0)
+    
+            print(f"\033[1mMapping disease_id {disease_id} to phecodes from {disease_phecode_map}...")
+            disease_phecode_map = pl.read_csv(
+                disease_phecode_map,
+                schema_overrides={"phecode": str}
+            )
+            # Filter for the given disease_id
+            disease_phecode_map = disease_phecode_map.filter(pl.col("disease_id") == disease_id)
+            # Keep only "phecode"
+            disease_phecode_map = disease_phecode_map.select("phecode").unique()
+            # Join with icd_phecode_map
+            icd_phecode_map = icd_phecode_map.join(
+                disease_phecode_map,
+                on="phecode",
+                how="inner"
+            )
+            print(f"\033[1mDone mapping disease_id. Remaining rows in icd_phecode_map: {icd_phecode_map.height}")
 
         # make a copy of self.icd_events
         icd_events = self.icd_events.clone()
@@ -109,7 +152,7 @@ class PhecodeMap:
 
         # Remove ICD codes if dx_icd is provided
         if dx_icd is not None and not dx_icd.empty:
-            dx_icd = utils.to_polars(dx_icd)
+            dx_icd = pl.read_csv(dx_icd)
             dx_icd = dx_icd.with_columns(pl.lit(1).alias('merge_indicator'))  # Temporary merge indicator
 
             icd_occurrences = icd_events.join(dx_icd, on=['ICD', 'flag'], how='left')
@@ -130,8 +173,8 @@ class PhecodeMap:
         if not phecode_occurrences.is_empty():
             if include_occurrence_age:
                 phecode_occurrences = phecode_occurrences.group_by(
-                    ["person_id", "phecode", "occurrence_age"]).len().rename(
-                    {"len": "num_occurrences"})
+                    ["person_id", "phecode"]).agg([pl.col("occurrence_age").min().alias("occurrence_age"), 
+                    pl.count().alias("num_occurrences")])
             else:
                 phecode_occurrences = phecode_occurrences.group_by(["person_id", "phecode"]).len().rename(
                     {"len": "num_occurrences"})

@@ -122,6 +122,10 @@ class PhecodeMap:
                 disease_phecode_map,
                 schema_overrides={"phecode": str}
             )
+
+            # Validation check
+            utils.check_disease_phecode_map(disease_phecode_map)
+            
             # Filter for the given disease_id
             disease_phecode_map = disease_phecode_map.filter(pl.col("disease_id") == disease_id)
             # Keep only "phecode"

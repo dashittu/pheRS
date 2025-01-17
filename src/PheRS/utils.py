@@ -421,7 +421,7 @@ def check_disease_phecode_map(disease_phecode_map):
 def check_scores(scores):
     """
     Validates the scores DataFrame to ensure it meets the expected structure and types, including checking
-    for uniqueness of 'person_id' and 'disease_id' pairs, ensuring required columns are present, and verifying the
+    for uniqueness of 'person_id', ensuring required columns are present, and verifying the
     data type and finiteness of the 'score' column.
 
     Parameters:
@@ -435,7 +435,7 @@ def check_scores(scores):
         raise ValueError("scores must be a polars DataFrame")
 
     # Check for required columns
-    required_columns = ['person_id', 'disease_id', 'score']
+    required_columns = ['person_id', 'score']
     missing_cols = [col for col in required_columns if col not in scores.columns]
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
@@ -451,9 +451,9 @@ def check_scores(scores):
     if scores.filter(pl.col('score').is_null() | pl.col('score').is_infinite()).height > 0:
         raise ValueError("Column 'score' must contain only finite numbers")
 
-    # Check for duplicates based on 'person_id' and 'disease_id'
-    if scores.unique(subset=['person_id', 'disease_id']).height != scores.height:
-        raise ValueError("Duplicates found based on 'person_id' and 'disease_id'")
+    # Check for duplicates based on 'person_id'
+    if scores.unique(subset=['person_id']).height != scores.height:
+        raise ValueError("Duplicates found based on 'person_id'")
 
 
 def check_method_formula(method_formula, demos):
